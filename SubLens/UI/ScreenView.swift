@@ -4,6 +4,7 @@ import AVFoundation
 struct ScreenView: View {
     @EnvironmentObject private var env: AppEnvironment
     @State private var showHowTo = false
+    @State private var showRegionPicker = false
 
     var body: some View {
         NavigationStack {
@@ -16,6 +17,8 @@ struct ScreenView: View {
                     } else {
                         steps
                     }
+
+                    regionCard
 
                     subtitleList
 
@@ -41,6 +44,11 @@ struct ScreenView: View {
         .sheet(isPresented: $showHowTo) {
             HowToSheet()
                 .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showRegionPicker) {
+            RegionPickerSheet(initial: env.screenService.region) { region in
+                env.screenService.applyRegion(region)
+            }
         }
     }
 
@@ -131,6 +139,59 @@ struct ScreenView: View {
         }
     }
 
+
+    // MARK: - 识别区域
+
+    private var regionCard: some View {
+        SectionCard(title: "识别区域") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center, spacing: 12) {
+                    RegionMiniMap(region: env.screenService.region)
+                        .frame(width: 44, height: 44 * 19.5 / 9.0)
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                        }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(env.screenService.region.isFull ? "整屏识别" : "区域识别")
+                            .font(.footnote.weight(.semibold))
+                        Text(env.screenService.region.isFull
+                             ? "状态栏、弹幕、广告都会被当成字幕，识别也更慢。"
+                             : env.screenService.region.summary)
+                            .font(.caption2)
+                            .foregroundStyle(Palette.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        showRegionPicker = true
+                    } label: {
+                        Label(env.screenService.region.isFull ? "框选识别范围" : "调整识别范围",
+                              systemImage: "viewfinder")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(GlassButtonStyle(prominent: true))
+
+                    if !env.screenService.region.isFull {
+                        Button("恢复整屏") {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                env.screenService.applyRegion(.full)
+                            }
+                        }
+                        .font(.caption.weight(.semibold))
+                        .buttonStyle(GlassButtonStyle())
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
     // MARK: - 字幕列表
 
     @ViewBuilder
@@ -176,6 +237,30 @@ struct ScreenView: View {
     }
 }
 
+// MARK: - 选区小地图
+
+private struct RegionMiniMap: View {
+    let region: ScreenRegion
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            ZStack(alignment: .topLeading) {
+                LinearGradient(colors: [Color(white: 0.22), Color(white: 0.10)],
+                               startPoint: .top, endPoint: .bottom)
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(Palette.accent.opacity(0.28))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .strokeBorder(Palette.accent.opacity(0.9), lineWidth: 1)
+                    }
+                    .frame(width: region.w * size.width, height: region.h * size.height)
+                    .offset(x: region.x * size.width, y: region.y * size.height)
+            }
+        }
+    }
+}
+
 // MARK: - 画中画预览容器
 
 struct PiPPreviewView: UIViewRepresentable {
@@ -218,6 +303,7 @@ struct HowToSheet: View {
                             bullet("视频播放类 App 的画面受 DRM 保护，系统不允许录制，这类内容识别不到。")
                             bullet("字体太小或背景太花时，把原页面放大一点再试。")
                             bullet("语言设置要和画面上文字一致。")
+                            bullet("想避开状态栏、弹幕、广告，就在本页「识别区域」里框出真正要翻译的那一块。")
                         }
                     }
                 }

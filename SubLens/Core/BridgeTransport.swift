@@ -1,11 +1,41 @@
 import Foundation
 import Network
 
+/// 主 App 与录屏扩展之间的一条消息。
+/// - lines：扩展 → 主 App，本轮识别到的文字
+/// - config：主 App → 扩展，识别区域（用户选定的选区）
+struct BridgeEnvelope: Codable {
+    var type: String
+    var lines: [RemoteScreenLine]?
+    var region: ScreenRegion?
+
+    static func makeLines(_ lines: [RemoteScreenLine]) -> BridgeEnvelope {
+        BridgeEnvelope(type: "lines", lines: lines, region: nil)
+    }
+
+    static func makeConfig(_ region: ScreenRegion) -> BridgeEnvelope {
+        BridgeEnvelope(type: "config", lines: nil, region: region)
+    }
+}
+
+enum BridgeCodec {
+    static func encode(_ envelope: BridgeEnvelope) -> Data? {
+        guard var data = try? JSONEncoder().encode(envelope) else { return nil }
+        data.append(0x0A)
+        return data
+    }
+
+    static func decode(_ data: Data) -> BridgeEnvelope? {
+        try? JSONDecoder().decode(BridgeEnvelope.self, from: data)
+    }
+}
+
 /// 主 App 与录屏扩展之间的回环传输。
 ///
 /// 正规做法是 App Group 共享容器，但 App Groups 需要付费开发者账号。
 /// 为了免费 Apple ID 也能用，这里加了一条 127.0.0.1 的本地 TCP 通道：
-/// 扩展把识别结果发到主 App 监听的端口，主 App 收到后照常翻译。
+/// 扩展把识别结果发到主 App 监听的端口，主 App 收到后照常翻译；
+/// 同一条连接是双向的，主 App 顺带把「识别区域」推回扩展。
 /// 回环地址不触发"本地网络"权限弹窗，也不需要任何 entitlement。
 final class BridgeServer {
 
@@ -15,6 +45,9 @@ final class BridgeServer {
     private let queue = DispatchQueue(label: "com.sublens.bridge.server", qos: .userInitiated)
     private var listener: NWListener?
     private(set) var isRunning = false
+
+    private var connections: [NWConnection] = []
+    private var lastConfig: ScreenRegion?
 
     var onLines: (([RemoteScreenLine]) -> Void)?
 
@@ -47,11 +80,31 @@ final class BridgeServer {
     func stop() {
         listener?.cancel()
         listener = nil
+        connections.forEach { $0.cancel() }
+        connections.removeAll()
         isRunning = false
+    }
+
+    /// 把识别区域推给扩展；同时记住它，扩展重连或后启动时自动补发
+    func sendConfig(_ region: ScreenRegion) {
+        guard let data = BridgeCodec.encode(.makeConfig(region)) else { return }
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.lastConfig = region
+            for connection in self.connections {
+                connection.send(content: data, completion: .contentProcessed { _ in })
+            }
+        }
     }
 
     private func accept(_ connection: NWConnection) {
         connection.start(queue: queue)
+        connections.append(connection)
+
+        // 新连上的扩展立即拿到当前的识别区域，避免"用户已经选好了却还在整屏识别"
+        if let region = lastConfig, let data = BridgeCodec.encode(.makeConfig(region)) {
+            connection.send(content: data, completion: .contentProcessed { _ in })
+        }
         receive(on: connection, buffer: Data())
     }
 
@@ -68,21 +121,27 @@ final class BridgeServer {
                 let chunk = accumulated.subdata(in: accumulated.startIndex..<range.lowerBound)
                 accumulated.removeSubrange(accumulated.startIndex...range.lowerBound)
                 if chunk.isEmpty { continue }
-                if let lines = try? JSONDecoder().decode([RemoteScreenLine].self, from: chunk) {
+                if let envelope = BridgeCodec.decode(chunk), let lines = envelope.lines {
                     self.onLines?(lines)
                 }
             }
 
             if error != nil || isComplete {
-                connection.cancel()
+                self.drop(connection)
                 return
             }
             self.receive(on: connection, buffer: accumulated)
         }
     }
+
+    private func drop(_ connection: NWConnection) {
+        connection.cancel()
+        connections.removeAll { $0 === connection }
+    }
 }
 
-/// 扩展侧的发送端：维持一条到主 App 的长连接，掉线自动重连。
+/// 扩展侧的发送端：维持一条到主 App 的长连接，掉线自动重连，
+/// 同时在这条连接上接收主 App 下发的识别区域。
 final class BridgeClient {
 
     static let shared = BridgeClient()
@@ -90,19 +149,24 @@ final class BridgeClient {
     private let queue = DispatchQueue(label: "com.sublens.bridge.client", qos: .utility)
     private var connection: NWConnection?
     private var isReady = false
-    private var pending: Data?
+    private var pending: [Data] = []
 
-    func send(_ lines: [RemoteScreenLine]) {
-        guard let payload = try? JSONEncoder().encode(lines) else { return }
-        var data = payload
-        data.append(0x0A)
+    /// 收到主 App 下发的识别区域
+    var onConfig: ((ScreenRegion) -> Void)?
+
+    func send(_ envelope: BridgeEnvelope) {
+        guard let data = BridgeCodec.encode(envelope) else { return }
 
         queue.async {
             if let connection = self.connection, self.isReady {
                 connection.send(content: data, completion: .contentProcessed { _ in })
                 return
             }
-            self.pending = data
+            // 没连上就先攒着，但别无限攒（画面文字是快照，攒太多没意义）
+            self.pending.append(data)
+            if self.pending.count > 4 {
+                self.pending.removeFirst(self.pending.count - 4)
+            }
             if self.connection == nil {
                 self.connect()
             }
@@ -121,10 +185,12 @@ final class BridgeClient {
             switch state {
             case .ready:
                 self.isReady = true
-                if let pending = self.pending {
-                    self.pending = nil
-                    connection.send(content: pending, completion: .contentProcessed { _ in })
+                let queued = self.pending
+                self.pending.removeAll()
+                for data in queued {
+                    connection.send(content: data, completion: .contentProcessed { _ in })
                 }
+                self.receive(on: connection)
             case .failed, .cancelled:
                 self.isReady = false
                 self.connection = nil
@@ -133,5 +199,33 @@ final class BridgeClient {
             }
         }
         connection.start(queue: queue)
+    }
+
+    private func receive(on connection: NWConnection, buffer: Data = Data()) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+            var accumulated = buffer
+            if let data {
+                accumulated.append(data)
+            }
+
+            let newline = Data([0x0A])
+            while let range = accumulated.range(of: newline) {
+                let chunk = accumulated.subdata(in: accumulated.startIndex..<range.lowerBound)
+                accumulated.removeSubrange(accumulated.startIndex...range.lowerBound)
+                if chunk.isEmpty { continue }
+                if let envelope = BridgeCodec.decode(chunk),
+                   envelope.type == "config",
+                   let region = envelope.region {
+                    self.onConfig?(region)
+                }
+            }
+
+            if error != nil || isComplete {
+                connection.cancel()
+                return
+            }
+            self.receive(on: connection, buffer: accumulated)
+        }
     }
 }

@@ -7,6 +7,8 @@ final class ScreenSubtitleService: ObservableObject {
 
     @Published var isListening = false
     @Published var statusText = ""
+    @Published var region: ScreenRegion = .full
+    @Published private(set) var regionApplied = false
     @Published var snapshotCount = 0
     @Published var transportText = ""
 
@@ -16,6 +18,32 @@ final class ScreenSubtitleService: ObservableObject {
     private var server: BridgeServer?
     private var latest: [RemoteScreenLine] = []
     private var previous: Set<String> = []
+
+    private static let regionKey = "screenRegion"
+
+    init() {
+        if let data = UserDefaults.standard.data(forKey: Self.regionKey),
+           let saved = try? JSONDecoder().decode(ScreenRegion.self, from: data) {
+            region = saved.clamped()
+        } else {
+            region = .full
+        }
+    }
+
+    /// 用户在选区面板确认后调用：落盘 + 下发扩展
+    func applyRegion(_ new: ScreenRegion) {
+        let clamped = new.clamped()
+        region = clamped
+        if let data = try? JSONEncoder().encode(clamped) {
+            UserDefaults.standard.set(data, forKey: Self.regionKey)
+        }
+        SharedScreenConfig.write(clamped)
+        server?.sendConfig(clamped)
+        regionApplied = true
+        // 换区域等于重来一遍，清掉历史快照，避免拿旧结果比对
+        previous = []
+        latest = []
+    }
 
     func start() {
         guard !isListening else { return }
@@ -37,11 +65,16 @@ final class ScreenSubtitleService: ObservableObject {
             }
             server.start()
             self.server = server
+            // 一启动就把当前选区推过去，扩展连上后立刻按选区识别
+            server.sendConfig(region)
+            SharedScreenConfig.write(region)
         }
 
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in
-            self?.poll()
+        if SharedScreenBus.usesSharedContainer {
+            timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+                self?.poll()
+            }
         }
         poll()
     }
@@ -73,7 +106,9 @@ final class ScreenSubtitleService: ObservableObject {
             }
             return
         }
-        statusText = "已识别 \(texts.count) 行"
+        statusText = region.isFull
+            ? "整屏识别 · 已识别 \(texts.count) 行"
+            : "区域识别 · 已识别 \(texts.count) 行"
 
         var fresh: [String] = []
         for text in texts where !previous.contains(text) {

@@ -11,6 +11,15 @@ class SampleHandler: RPBroadcastSampleHandler {
     override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
         running = true
         SharedScreenBus.write([])
+
+        // 主 App 会通过回环连接下发用户选定的识别区域
+        BridgeClient.shared.onConfig = { [weak self] region in
+            self?.worker.apply(region: region)
+        }
+        // 有 App Group 时，配置是写在共享文件里的，直接读一次
+        if let saved = SharedScreenConfig.read() {
+            worker.apply(region: saved)
+        }
     }
 
     override func broadcastPaused() {

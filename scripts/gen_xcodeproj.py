@@ -31,6 +31,7 @@ APP_SOURCES = [
     "SubLens/UI/RootView.swift",
     "SubLens/UI/LiveView.swift",
     "SubLens/UI/ScreenView.swift",
+    "SubLens/UI/RegionPickerSheet.swift",
     "SubLens/UI/ImageTranslateView.swift",
     "SubLens/UI/SettingsView.swift",
     "SubLens/UI/LanguagePickerSheet.swift",
