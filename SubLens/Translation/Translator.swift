@@ -3,10 +3,10 @@ import Translation
 
 /// 翻译调度器。
 ///
-/// 端上会话用 `TranslationSession(installedSource:target:)` 自己创建，
-/// 不用 SwiftUI 的 .translationTask 回调——官方文档说明配置变化后继续用旧会话会 fatalError，
-/// 自己持有会话反而更稳，也不依赖界面生命周期。
-/// 语言包没装会抛错，这时自动降级到云端兜底。
+/// TranslationSession 没有公开构造器，只能由 SwiftUI 的 .translationTask 回调交给我们，
+/// 所以 RootView 挂了一个常驻的 translationTask，把会话注入这里。
+/// 语种一变，SwiftUI 会带着新会话重新回调，旧会话随之被替换，不会踩「复用过期会话」的坑。
+/// 语言包没装时翻译会抛错，这时自动降级到云端兜底。
 @MainActor
 final class Translator: ObservableObject {
 
@@ -20,32 +20,25 @@ final class Translator: ObservableObject {
     @Published var openAIKey = ""
 
     private var session: TranslationSession?
-    private var sessionKey = ""
+    /// 端上翻译连续失败时先走云端，避免每句都先卡一次超时
+    private var onDeviceFailed = false
 
     var hasOnDeviceSession: Bool { session != nil }
 
-    private func onDeviceSession(source: String, target: String) -> TranslationSession? {
-        let key = source + ">" + target
-        if key == sessionKey {
-            return session
-        }
+    /// 由 .translationTask 回调注入会话
+    func install(_ session: TranslationSession) {
+        self.session = session
+        self.onDeviceFailed = false
+        self.lastError = nil
+        self.engineDescription = "端上翻译"
+    }
 
-        do {
-            let newSession = try TranslationSession(
-                installedSource: LanguageOption.option(for: source).locale,
-                target: LanguageOption.option(for: target).locale
-            )
-            session = newSession
-            sessionKey = key
-            lastError = nil
-            engineDescription = "端上翻译"
-            return newSession
-        } catch {
-            session = nil
-            sessionKey = key
-            lastError = "端上翻译不可用：\(LanguageOption.title(for: source)) → \(LanguageOption.title(for: target)) 的语言包还没装。去系统「翻译」App 下载后即可离线翻译；当前已尝试云端兜底。"
-            return nil
-        }
+    /// 清掉会话缓存，让 AppEnvironment 重新挂一次 translationTask
+    func resetSession() {
+        session = nil
+        onDeviceFailed = false
+        lastError = nil
+        engineDescription = "端上翻译"
     }
 
     func translate(_ text: String, from source: String, to target: String) async -> String? {
@@ -56,13 +49,16 @@ final class Translator: ObservableObject {
         isBusy = true
         defer { isBusy = false }
 
-        if let session = onDeviceSession(source: source, target: target) {
+        if let session, !onDeviceFailed, source != target {
             do {
                 let response = try await session.translate(trimmed)
                 engineDescription = "端上翻译"
+                lastError = nil
                 return response.targetText
             } catch {
-                lastError = "端上翻译失败：\(error.localizedDescription)"
+                onDeviceFailed = true
+                lastError = "端上翻译失败（多为语言包未下载）：\(error.localizedDescription)。已切到云端兜底，去系统「翻译」App 下载语言包后可恢复离线。"
+                engineDescription = "云端兜底"
             }
         }
 
@@ -70,12 +66,6 @@ final class Translator: ObservableObject {
         let cloud = await cloudTranslate(trimmed, from: source, to: target)
         if cloud != nil { engineDescription = "云端兜底" }
         return cloud
-    }
-
-    func resetSession() {
-        session = nil
-        sessionKey = ""
-        lastError = nil
     }
 
     // MARK: - 云端兜底

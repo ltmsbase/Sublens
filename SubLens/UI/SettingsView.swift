@@ -95,7 +95,7 @@ struct SettingsView: View {
             }
 
             Button("重新检测端上翻译语言包") {
-                env.translator.resetSession()
+                env.refreshTranslator()
             }
 
             Toggle(isOn: cloudFallback) {

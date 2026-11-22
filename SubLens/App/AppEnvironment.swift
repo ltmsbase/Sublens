@@ -3,6 +3,7 @@ import SwiftUI
 import Combine
 import AVFoundation
 import UIKit
+import Translation
 
 /// 全局状态与服务装配。视图里通过 @EnvironmentObject 访问。
 @MainActor
@@ -11,11 +12,20 @@ final class AppEnvironment: ObservableObject {
     // MARK: - 设置项
 
     @Published var sourceLanguage: String = "en" {
-        didSet { UserDefaults.standard.set(sourceLanguage, forKey: "srcLang") }
+        didSet {
+            UserDefaults.standard.set(sourceLanguage, forKey: "srcLang")
+            rebuildTranslationConfiguration()
+        }
     }
     @Published var targetLanguage: String = "zh-Hans" {
-        didSet { UserDefaults.standard.set(targetLanguage, forKey: "dstLang") }
+        didSet {
+            UserDefaults.standard.set(targetLanguage, forKey: "dstLang")
+            rebuildTranslationConfiguration()
+        }
     }
+
+    /// 交给 RootView 的 .translationTask 使用；语种变化时重建，SwiftUI 会带新会话重新回调。
+    @Published var translationConfiguration: TranslationSession.Configuration?
     @Published var ttsEnabled: Bool = true {
         didSet { speaker.enabled = ttsEnabled; UserDefaults.standard.set(ttsEnabled, forKey: "ttsEnabled") }
     }
@@ -70,12 +80,35 @@ final class AppEnvironment: ObservableObject {
         wireSpeech()
         wireScreen()
 
+        rebuildTranslationConfiguration()
+
         backgroundObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in self?.pip.startIfPossible() }
+        }
+    }
+
+    private func rebuildTranslationConfiguration() {
+        guard sourceLanguage != targetLanguage else {
+            translationConfiguration = nil
+            return
+        }
+        translationConfiguration = TranslationSession.Configuration(
+            source: Locale.Language(identifier: sourceLanguage),
+            target: Locale.Language(identifier: targetLanguage)
+        )
+    }
+
+    /// 设置页「重新检测端上翻译语言包」：清缓存并重新挂载 translationTask
+    func refreshTranslator() {
+        translator.resetSession()
+        translationConfiguration = nil
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            rebuildTranslationConfiguration()
         }
     }
 
