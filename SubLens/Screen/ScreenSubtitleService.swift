@@ -11,6 +11,13 @@ final class ScreenSubtitleService: ObservableObject {
     @Published private(set) var regionApplied = false
     /// 原文语言设成「自动」时，让扩展也自动判断文字语种
     private(set) var autoDetect = false
+    /// 是否做屏幕文字识别
+    @Published private(set) var ocrEnabled = true
+    /// 是否转录正在播放的媒体声音
+    @Published private(set) var audioEnabled = false
+
+    /// 收到媒体音频片段（16kHz 单声道 Int16）
+    var onAudio: ((Data) -> Void)?
     @Published var snapshotCount = 0
     @Published var transportText = ""
 
@@ -39,8 +46,7 @@ final class ScreenSubtitleService: ObservableObject {
         if let data = try? JSONEncoder().encode(clamped) {
             UserDefaults.standard.set(data, forKey: Self.regionKey)
         }
-        SharedScreenConfig.write(clamped, autoDetect: autoDetect)
-        server?.sendConfig(clamped, autoDetect: autoDetect)
+        pushConfig()
         regionApplied = true
         // 换区域等于重来一遍，清掉历史快照，避免拿旧结果比对
         previous = []
@@ -49,8 +55,24 @@ final class ScreenSubtitleService: ObservableObject {
 
     func applyAutoDetect(_ flag: Bool) {
         autoDetect = flag
-        SharedScreenConfig.write(region, autoDetect: flag)
-        server?.sendConfig(region, autoDetect: flag)
+        pushConfig()
+    }
+
+    /// 屏幕文字 / 媒体声音两种模式的开关
+    func setModes(ocr: Bool, audio: Bool) {
+        ocrEnabled = ocr
+        audioEnabled = audio
+        pushConfig()
+    }
+
+    private var payload: ScreenConfigPayload {
+        ScreenConfigPayload(region: region, autoDetect: autoDetect,
+                            ocrEnabled: ocrEnabled, audioEnabled: audioEnabled)
+    }
+
+    private func pushConfig() {
+        SharedScreenConfig.write(payload)
+        server?.sendConfig(payload)
     }
 
     func start() {
@@ -64,19 +86,24 @@ final class ScreenSubtitleService: ObservableObject {
             transportText = "App Group 共享容器"
         } else {
             transportText = "回环 TCP 通道"
-            let server = BridgeServer()
-            server.onLines = { [weak self] lines in
-                DispatchQueue.main.async {
-                    self?.latest = lines
-                    self?.poll()
-                }
-            }
-            server.start()
-            self.server = server
-            // 一启动就把当前选区推过去，扩展连上后立刻按选区识别
-            server.sendConfig(region, autoDetect: autoDetect)
-            SharedScreenConfig.write(region, autoDetect: autoDetect)
         }
+
+        // 回环服务端总要起：媒体音频只能走 TCP，即使文字走共享文件也一样
+        let server = BridgeServer()
+        server.onLines = { [weak self] lines in
+            guard !SharedScreenBus.usesSharedContainer else { return }
+            DispatchQueue.main.async {
+                self?.latest = lines
+                self?.poll()
+            }
+        }
+        server.onAudio = { [weak self] pcm in
+            self?.onAudio?(pcm)
+        }
+        server.start()
+        self.server = server
+        // 一启动就把当前配置推过去，扩展连上后立刻按配置工作
+        pushConfig()
 
         timer?.invalidate()
         if SharedScreenBus.usesSharedContainer {

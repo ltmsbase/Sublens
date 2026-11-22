@@ -32,6 +32,7 @@
 		6C6F1733A7572159FBF6B4E5 /* ScreenBroadcastExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 657350E34AFB37D463DC7294 /* ScreenBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		109CFEF575645AFCAFE041A0 /* SampleHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A939068E0A285521DA08AE5 /* SampleHandler.swift */; };
 		1DC9314B323C3228BF5E564A /* ScreenOCRWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5BBD767D4A233BDCD79098F /* ScreenOCRWorker.swift */; };
+		156EC5CF545BF046112F2656 /* AudioRelayWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44D7D8F3A36FB47655F0AB24 /* AudioRelayWorker.swift */; };
 		B02BD1BADD691E99C8927D53 /* SharedBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A59555E182652DDC99ACFBE /* SharedBus.swift */; };
 		5611D5E3B85175DF57CAC374 /* BridgeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8D0B41C93335A74E20F3F94 /* BridgeTransport.swift */; };
 /* End PBXBuildFile section */
@@ -89,6 +90,7 @@
 		C157C9868FCBE958E8E8450C /* ScreenBroadcastExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ScreenBroadcastExtension.entitlements; sourceTree = "<group>"; };
 		2A939068E0A285521DA08AE5 /* SampleHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleHandler.swift; sourceTree = "<group>"; };
 		E5BBD767D4A233BDCD79098F /* ScreenOCRWorker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenOCRWorker.swift; sourceTree = "<group>"; };
+		44D7D8F3A36FB47655F0AB24 /* AudioRelayWorker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRelayWorker.swift; sourceTree = "<group>"; };
 		996AD237BC284D463E664FFE /* SubLens.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SubLens.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		657350E34AFB37D463DC7294 /* ScreenBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ScreenBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -213,6 +215,7 @@
 				C157C9868FCBE958E8E8450C /* ScreenBroadcastExtension.entitlements */,
 				2A939068E0A285521DA08AE5 /* SampleHandler.swift */,
 				E5BBD767D4A233BDCD79098F /* ScreenOCRWorker.swift */,
+				44D7D8F3A36FB47655F0AB24 /* AudioRelayWorker.swift */,
 			);
 			sourceTree = "<group>";
 			path = ScreenBroadcastExtension;
@@ -366,6 +369,7 @@
 			files = (
 				109CFEF575645AFCAFE041A0 /* SampleHandler.swift in Sources */,
 				1DC9314B323C3228BF5E564A /* ScreenOCRWorker.swift in Sources */,
+				156EC5CF545BF046112F2656 /* AudioRelayWorker.swift in Sources */,
 				B02BD1BADD691E99C8927D53 /* SharedBus.swift in Sources */,
 				5611D5E3B85175DF57CAC374 /* BridgeTransport.swift in Sources */,
 			);

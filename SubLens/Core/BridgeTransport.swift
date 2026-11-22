@@ -3,19 +3,24 @@ import Network
 
 /// 主 App 与录屏扩展之间的一条消息。
 /// - lines：扩展 → 主 App，本轮识别到的文字
-/// - config：主 App → 扩展，识别区域（用户选定的选区）
+/// - audio：扩展 → 主 App，媒体音频片段（16kHz 单声道 Int16，base64）
+/// - config：主 App → 扩展，识别区域 / 自动语种 / 是否 OCR / 是否转录媒体声音
 struct BridgeEnvelope: Codable {
     var type: String
     var lines: [RemoteScreenLine]?
-    var region: ScreenRegion?
-    var auto: Bool?
+    var config: ScreenConfigPayload?
+    var audio: String?
 
     static func makeLines(_ lines: [RemoteScreenLine]) -> BridgeEnvelope {
-        BridgeEnvelope(type: "lines", lines: lines, region: nil, auto: nil)
+        BridgeEnvelope(type: "lines", lines: lines, config: nil, audio: nil)
     }
 
-    static func makeConfig(_ region: ScreenRegion, autoDetect: Bool) -> BridgeEnvelope {
-        BridgeEnvelope(type: "config", lines: nil, region: region, auto: autoDetect)
+    static func makeConfig(_ payload: ScreenConfigPayload) -> BridgeEnvelope {
+        BridgeEnvelope(type: "config", lines: nil, config: payload, audio: nil)
+    }
+
+    static func makeAudio(_ pcm: Data) -> BridgeEnvelope {
+        BridgeEnvelope(type: "audio", lines: nil, config: nil, audio: pcm.base64EncodedString())
     }
 }
 
@@ -48,9 +53,11 @@ final class BridgeServer {
     private(set) var isRunning = false
 
     private var connections: [NWConnection] = []
-    private var lastConfig: (region: ScreenRegion, autoDetect: Bool)?
+    private var lastConfig: ScreenConfigPayload?
 
     var onLines: (([RemoteScreenLine]) -> Void)?
+    /// 媒体音频片段（16kHz 单声道 Int16）
+    var onAudio: ((Data) -> Void)?
 
     func start() {
         guard !isRunning else { return }
@@ -87,11 +94,11 @@ final class BridgeServer {
     }
 
     /// 把识别区域推给扩展；同时记住它，扩展重连或后启动时自动补发
-    func sendConfig(_ region: ScreenRegion, autoDetect: Bool) {
-        guard let data = BridgeCodec.encode(.makeConfig(region, autoDetect: autoDetect)) else { return }
+    func sendConfig(_ payload: ScreenConfigPayload) {
+        guard let data = BridgeCodec.encode(.makeConfig(payload)) else { return }
         queue.async { [weak self] in
             guard let self else { return }
-            self.lastConfig = (region, autoDetect)
+            self.lastConfig = payload
             for connection in self.connections {
                 connection.send(content: data, completion: .contentProcessed { _ in })
             }
@@ -104,7 +111,7 @@ final class BridgeServer {
 
         // 新连上的扩展立即拿到当前的识别区域，避免"用户已经选好了却还在整屏识别"
         if let config = lastConfig,
-           let data = BridgeCodec.encode(.makeConfig(config.region, autoDetect: config.autoDetect)) {
+           let data = BridgeCodec.encode(.makeConfig(config)) {
             connection.send(content: data, completion: .contentProcessed { _ in })
         }
         receive(on: connection, buffer: Data())
@@ -123,8 +130,11 @@ final class BridgeServer {
                 let chunk = accumulated.subdata(in: accumulated.startIndex..<range.lowerBound)
                 accumulated.removeSubrange(accumulated.startIndex...range.lowerBound)
                 if chunk.isEmpty { continue }
-                if let envelope = BridgeCodec.decode(chunk), let lines = envelope.lines {
+                guard let envelope = BridgeCodec.decode(chunk) else { continue }
+                if let lines = envelope.lines {
                     self.onLines?(lines)
+                } else if let base64 = envelope.audio, let pcm = Data(base64Encoded: base64) {
+                    self.onAudio?(pcm)
                 }
             }
 
@@ -153,8 +163,13 @@ final class BridgeClient {
     private var isReady = false
     private var pending: [Data] = []
 
-    /// 收到主 App 下发的识别区域
-    var onConfig: ((ScreenRegion, Bool) -> Void)?
+    /// 收到主 App 下发的识别配置
+    var onConfig: ((ScreenConfigPayload) -> Void)?
+
+    /// 发一段媒体音频（16kHz 单声道 Int16）
+    func sendAudio(_ pcm: Data) {
+        send(.makeAudio(pcm))
+    }
 
     func send(_ envelope: BridgeEnvelope) {
         guard let data = BridgeCodec.encode(envelope) else { return }
@@ -218,8 +233,8 @@ final class BridgeClient {
                 if chunk.isEmpty { continue }
                 if let envelope = BridgeCodec.decode(chunk),
                    envelope.type == "config",
-                   let region = envelope.region {
-                    self.onConfig?(region, envelope.auto ?? false)
+                   let config = envelope.config {
+                    self.onConfig?(config)
                 }
             }
 

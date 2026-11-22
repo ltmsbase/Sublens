@@ -38,6 +38,8 @@ final class SpeechService: ObservableObject {
     private var localeID = "en-US"
     private var autoDetect = false
     private var restarting = false
+    /// 音频流模式下，外部喂进来的 PCM 都排在这条队列上
+    private let feedQueue = DispatchQueue(label: "com.sublens.speech.feed", qos: .userInitiated)
 
     // MARK: - 权限
 
@@ -69,6 +71,58 @@ final class SpeechService: ObservableObject {
         self.autoDetect = autoDetect
         errorMessage = nil
         begin()
+    }
+
+    /// 音频流模式：不采集麦克风，由录屏扩展转来的媒体音频驱动识别
+    func startFeed(localeID: String, autoDetect: Bool = false) {
+        guard !isRunning else { return }
+        self.localeID = localeID
+        self.autoDetect = autoDetect
+        errorMessage = nil
+
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeID)) ?? SFSpeechRecognizer(),
+              recognizer.isAvailable else {
+            fail("当前语种的语音识别不可用")
+            return
+        }
+        self.recognizer = recognizer
+
+        DispatchQueue.main.async { self.isRunning = true }
+        startTask()
+        scheduleTimers()
+    }
+
+    /// 追加一段 16kHz 单声道 Int16 的 PCM，喂给识别请求
+    func appendPCM(_ data: Data) {
+        guard !data.isEmpty else { return }
+        feedQueue.async { [weak self] in
+            guard let self, self.isRunning else { return }
+            guard let buffer = Self.makeBuffer(fromPCM16: data, sampleRate: 16000) else { return }
+            self.request?.append(buffer)
+            self.estimateLevel(buffer)
+        }
+    }
+
+    /// Int16 → AVAudioPCMBuffer（Float32 单声道）
+    static func makeBuffer(fromPCM16 data: Data, sampleRate: Double) -> AVAudioPCMBuffer? {
+        let frameCount = data.count / 2
+        guard frameCount > 0,
+              let format = AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                                         sampleRate: sampleRate,
+                                         channels: 1,
+                                         interleaved: false),
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameCount)) else {
+            return nil
+        }
+        buffer.frameLength = AVAudioFrameCount(frameCount)
+        guard let out = buffer.floatChannelData?[0] else { return nil }
+        data.withUnsafeBytes { raw in
+            guard let base = raw.bindMemory(to: Int16.self).baseAddress else { return }
+            for index in 0..<frameCount {
+                out[index] = Float(base[index]) / 32768.0
+            }
+        }
+        return buffer
     }
 
     private func begin() {

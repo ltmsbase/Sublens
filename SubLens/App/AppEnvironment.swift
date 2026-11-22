@@ -51,6 +51,8 @@ final class AppEnvironment: ObservableObject {
     let translator = Translator()
     let speaker = SpeechSynthesizer()
     let speech = SpeechService()
+    /// 媒体声音（正在播放的音视频）用的识别实例，和麦克风互不干扰
+    let mediaSpeech = SpeechService()
     let screenService = ScreenSubtitleService()
     let pip = PiPSubtitleController()
     let ocr = ImageOCRService()
@@ -61,6 +63,18 @@ final class AppEnvironment: ObservableObject {
     @Published var liveLines: [SubtitleLine] = []
     @Published var screenLines: [SubtitleLine] = []
     @Published var partialText: String = ""
+    @Published var mediaPartialText: String = ""
+
+    /// 屏幕字幕的两种模式：false=识别屏幕文字，true=转录媒体声音
+    @Published var mediaMode: Bool = false {
+        didSet {
+            UserDefaults.standard.set(mediaMode, forKey: "mediaMode")
+            if isScreenRunning {
+                screenService.setModes(ocr: !mediaMode, audio: mediaMode)
+                applyMediaFeed()
+            }
+        }
+    }
     @Published var statusMessage: String?
     @Published var isLiveRunning = false
     @Published var isScreenRunning = false
@@ -79,9 +93,23 @@ final class AppEnvironment: ObservableObject {
             ttsEnabled = UserDefaults.standard.bool(forKey: "ttsEnabled")
         }
         speaker.enabled = ttsEnabled
+        if UserDefaults.standard.object(forKey: "mediaMode") != nil {
+            mediaMode = UserDefaults.standard.bool(forKey: "mediaMode")
+        }
+
+        wireMedia()
+        screenService.onAudio = { [weak self] pcm in
+            self?.mediaSpeech.appendPCM(pcm)
+        }
 
         // 把子对象的变化转发给外层，SwiftUI 才能刷新
         speech.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        mediaSpeech.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        screenService.objectWillChange
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
         screenService.objectWillChange
@@ -152,6 +180,39 @@ final class AppEnvironment: ObservableObject {
         }
     }
 
+    private func wireMedia() {
+        mediaSpeech.onPartial = { [weak self] text in
+            self?.mediaPartialText = text
+        }
+        mediaSpeech.onFinal = { [weak self] text, _ in
+            // 媒体台词不朗读，避免和正在播放的声音打架
+            self?.enqueue(text, kind: .media, speak: false)
+        }
+        mediaSpeech.onDetectedLanguage = { [weak self] code in
+            guard let self else { return }
+            if self.sourceLanguage == "auto" {
+                self.detectedSourceLanguage = code
+            }
+        }
+    }
+
+    /// 按当前模式启动/停止媒体音频识别
+    private func applyMediaFeed() {
+        if isScreenRunning && mediaMode {
+            mediaSpeech.startFeed(localeID: liveLocale, autoDetect: LanguageOption.isAuto(sourceLanguage))
+        } else {
+            mediaSpeech.stop()
+            mediaPartialText = ""
+        }
+    }
+
+    private var liveLocale: String {
+        if LanguageOption.isAuto(sourceLanguage) {
+            return LanguageDetector.recognizerLocale(for: LanguageDetector.systemPreferredCode)
+        }
+        return LanguageOption.option(for: sourceLanguage).recognizerLocale
+    }
+
     private func wireScreen() {
         screenService.onNewLine = { [weak self] text in
             self?.enqueue(text, kind: .screen)
@@ -174,11 +235,7 @@ final class AppEnvironment: ObservableObject {
         liveLines.removeAll()
         partialText = ""
         isLiveRunning = true
-        let auto = LanguageOption.isAuto(sourceLanguage)
-        let locale = auto
-            ? LanguageDetector.recognizerLocale(for: LanguageDetector.systemPreferredCode)
-            : LanguageOption.option(for: sourceLanguage).recognizerLocale
-        speech.start(localeID: locale, autoDetect: auto)
+        speech.start(localeID: liveLocale, autoDetect: LanguageOption.isAuto(sourceLanguage))
     }
 
     func stopLive() {
@@ -204,7 +261,9 @@ final class AppEnvironment: ObservableObject {
         keeper.start()
         pip.reset()
         screenService.applyAutoDetect(LanguageOption.isAuto(sourceLanguage))
+        screenService.setModes(ocr: !mediaMode, audio: mediaMode)
         screenService.start()
+        applyMediaFeed()
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
@@ -217,6 +276,8 @@ final class AppEnvironment: ObservableObject {
 
     func stopScreen() {
         screenService.stop()
+        mediaSpeech.stop()
+        mediaPartialText = ""
         pip.reset()
         pip.stop()
         keeper.stop()
@@ -279,7 +340,7 @@ final class AppEnvironment: ObservableObject {
         // 乐观渲染：原文先上屏，译文到了再原地补上，感知延迟直接砍掉翻译耗时
         let placeholder = SubtitleLine(original: trimmed, translation: "", kind: kind)
         appendLine(placeholder)
-        if kind == .screen {
+        if kind == .screen || kind == .media {
             pip.push(original: trimmed)
         }
 
@@ -292,7 +353,7 @@ final class AppEnvironment: ObservableObject {
 
     private func appendLine(_ line: SubtitleLine) {
         switch line.kind {
-        case .screen:
+        case .screen, .media:
             screenLines.append(line)
             if screenLines.count > 80 { screenLines.removeFirst(screenLines.count - 80) }
         case .microphone, .image:
@@ -333,7 +394,7 @@ final class AppEnvironment: ObservableObject {
                 }
             }
 
-            if item.kind == .screen {
+            if item.kind == .screen || item.kind == .media {
                 pip.fill(original: item.text, translation: translation)
                 isPiPActive = pip.isActive
             }

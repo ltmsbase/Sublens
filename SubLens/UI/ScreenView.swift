@@ -18,7 +18,10 @@ struct ScreenView: View {
                         steps
                     }
 
-                    regionCard
+                    modeCard
+                    if !env.mediaMode {
+                        regionCard
+                    }
 
                     subtitleList
 
@@ -140,6 +143,45 @@ struct ScreenView: View {
     }
 
 
+
+    // MARK: - 翻译方式
+
+    private var modeCard: some View {
+        SectionCard(title: "翻译方式") {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    modeChip(title: "屏幕文字", icon: "text.viewfinder", active: !env.mediaMode) {
+                        env.mediaMode = false
+                    }
+                    modeChip(title: "媒体声音", icon: "waveform", active: env.mediaMode) {
+                        env.mediaMode = true
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                Text(env.mediaMode
+                     ? "转录手机正在播放的视频或音乐里的人声，再翻译成字幕。受 DRM 保护的流媒体系统只给静音，识别不到。"
+                     : "识别屏幕上的文字。如果视频人声才是你要的内容，切到「媒体声音」。")
+                    .font(.caption2)
+                    .foregroundStyle(Palette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func modeChip(title: String, icon: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { action() }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                Text(title)
+            }
+            .font(.caption.weight(.semibold))
+        }
+        .buttonStyle(GlassButtonStyle(prominent: active))
+    }
+
     // MARK: - 识别区域
 
     private var regionCard: some View {
@@ -198,9 +240,11 @@ struct ScreenView: View {
     private var subtitleList: some View {
         if env.screenLines.isEmpty {
             if env.isScreenRunning {
-                EmptyHint(icon: "rectangle.dashed",
-                          title: "等待画面文字",
-                          detail: "切到有文字的页面（聊天、网页、字幕、菜单都行），识别到后这里会出现双语对照。")
+                EmptyHint(icon: env.mediaMode ? "waveform" : "rectangle.dashed",
+                          title: env.mediaMode ? "等待媒体声音" : "等待画面文字",
+                          detail: env.mediaMode
+                          ? "打开要看的视频或音乐，人声出现后这里会出现双语字幕，浮窗里也会同步滚动。"
+                          : "切到有文字的页面（聊天、网页、字幕、菜单都行），识别到后这里会出现双语对照。")
             }
         } else {
             SectionCard(title: "最近字幕") {
@@ -295,6 +339,15 @@ struct HowToSheet: View {
                             bullet("App 在后台时，字幕会走「浮窗字幕」（画中画）显示，记得先点开启浮窗。")
                             bullet("如果只想要全屏大字幕，就留在本 App 里看。")
                             bullet("停止方式：控制中心的录屏按钮，或本页的停止按钮。")
+                        }
+                    }
+
+                    SectionCard(title: "翻译正在播放的视频") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            bullet("在本页把「翻译方式」切到「媒体声音」，然后照常开播，再去播放视频。")
+                            bullet("扩展会把系统音频重采样后交给主 App 转写，不需要开外放很大声。")
+                            bullet("Netflix、Apple TV 这类受 DRM 保护的内容，系统不会给出音频，识别不到。")
+                            bullet("人声太小或背景音乐太大时会漏字，这种情况还是用「屏幕文字」看画面字幕更可靠。")
                         }
                     }
 

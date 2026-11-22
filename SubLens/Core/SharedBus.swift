@@ -70,10 +70,31 @@ struct ScreenRegion: Codable, Equatable {
     }
 }
 
-/// 屏幕识别配置：区域 + 是否自动判断语种
+/// 屏幕/媒体识别配置：区域、自动语种、是否做文字识别、是否转录媒体音频
 struct ScreenConfigPayload: Codable, Equatable {
     var region: ScreenRegion
     var autoDetect: Bool
+    var ocrEnabled: Bool
+    var audioEnabled: Bool
+
+    init(region: ScreenRegion, autoDetect: Bool, ocrEnabled: Bool = true, audioEnabled: Bool = false) {
+        self.region = region
+        self.autoDetect = autoDetect
+        self.ocrEnabled = ocrEnabled
+        self.audioEnabled = audioEnabled
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case region, autoDetect, ocrEnabled, audioEnabled
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        region = ((try container.decodeIfPresent(ScreenRegion.self, forKey: .region)) ?? .full).clamped()
+        autoDetect = try container.decodeIfPresent(Bool.self, forKey: .autoDetect) ?? false
+        ocrEnabled = try container.decodeIfPresent(Bool.self, forKey: .ocrEnabled) ?? true
+        audioEnabled = try container.decodeIfPresent(Bool.self, forKey: .audioEnabled) ?? false
+    }
 }
 
 /// 识别配置在共享容器里的落盘（有 App Group 时扩展读文件拿配置）
@@ -81,9 +102,8 @@ enum SharedScreenConfig {
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
 
-    static func write(_ region: ScreenRegion, autoDetect: Bool) {
+    static func write(_ payload: ScreenConfigPayload) {
         guard let url = SharedConfig.regionFileURL else { return }
-        let payload = ScreenConfigPayload(region: region, autoDetect: autoDetect)
         guard let data = try? encoder.encode(payload) else { return }
         try? data.write(to: url, options: .atomic)
     }
@@ -94,7 +114,7 @@ enum SharedScreenConfig {
               let payload = try? decoder.decode(ScreenConfigPayload.self, from: data) else {
             return nil
         }
-        return ScreenConfigPayload(region: payload.region.clamped(), autoDetect: payload.autoDetect)
+        return payload
     }
 }
 

@@ -20,6 +20,7 @@ final class ScreenOCRWorker {
 
     private var _region: ScreenRegion = .full
     private var autoDetect = false
+    private var ocrEnabled = true
     private var regionSnapshot: ScreenRegion {
         lock.lock()
         defer { lock.unlock() }
@@ -32,21 +33,24 @@ final class ScreenOCRWorker {
         lock.unlock()
     }
 
-    /// 主 App 下发了新的识别区域和语种开关
-    func apply(region: ScreenRegion, autoDetect: Bool) {
+    /// 主 App 下发了新的识别配置
+    func apply(region: ScreenRegion, autoDetect: Bool, ocrEnabled: Bool) {
         let clamped = region.clamped()
         queue.async { [weak self] in
             guard let self else { return }
-            let regionChanged = clamped != self.regionSnapshot
-            let autoChanged = autoDetect != self.autoDetect
-            guard regionChanged || autoChanged else { return }
+            let changed = clamped != self.regionSnapshot
+                || autoDetect != self.autoDetect
+                || ocrEnabled != self.ocrEnabled
+            guard changed else { return }
             self.setRegion(clamped)
             self.autoDetect = autoDetect
-            self.lastJoined = ""       // 区域或语种变了，允许下一次识别结果立刻上屏
+            self.ocrEnabled = ocrEnabled
+            self.lastJoined = ""       // 配置变了，允许下一次识别结果立刻上屏
         }
     }
 
     func handle(_ sampleBuffer: CMSampleBuffer) {
+        guard ocrEnabled else { return }
         let now = Date().timeIntervalSince1970
         // 选区越小，单次识别越便宜，可以跑得更勤
         let interval: TimeInterval = regionSnapshot.isFull ? 0.45 : 0.28
@@ -63,9 +67,10 @@ final class ScreenOCRWorker {
 
         // 有 App Group 时配置走共享文件（文件极小，每次读一下最省心）
         if let payload = SharedScreenConfig.read() {
-            if payload.region != regionSnapshot || payload.autoDetect != autoDetect {
+            if payload.region != regionSnapshot || payload.autoDetect != autoDetect || payload.ocrEnabled != ocrEnabled {
                 setRegion(payload.region)
                 autoDetect = payload.autoDetect
+                ocrEnabled = payload.ocrEnabled
                 lastJoined = ""
             }
         }

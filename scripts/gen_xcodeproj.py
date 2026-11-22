@@ -43,6 +43,7 @@ APP_RESOURCES = ["SubLens/Resources/Assets.xcassets"]
 EXT_SOURCES = [
     "ScreenBroadcastExtension/SampleHandler.swift",
     "ScreenBroadcastExtension/ScreenOCRWorker.swift",
+    "ScreenBroadcastExtension/AudioRelayWorker.swift",
     "SubLens/Core/SharedBus.swift",
     "SubLens/Core/BridgeTransport.swift",
 ]

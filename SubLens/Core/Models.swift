@@ -5,6 +5,7 @@ enum SubtitleKind: String, Codable, Hashable {
     case screen      // 屏幕内容
     case microphone  // 麦克风同传
     case image       // 识图翻译
+    case media       // 手机正在播放的媒体声音
 }
 
 /// 一条双语字幕
