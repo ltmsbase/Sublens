@@ -1,5 +1,8 @@
 # 没有 Xcode 怎么把「译幕」装到 iPhone
 
+> **ipa 已经编译好了**（2026-11-22 云端构建通过，501 KB）。如果你手上已经有 `SubLens-unsigned.ipa`，**跳过第一、二节**，直接从下面的「三、用 Sideloadly 签名安装」开始。
+> 想自己重新编译：仓库 <https://github.com/ltmsbase/Sublens> 的 Actions 页点 `Run workflow`。
+
 结论先说：**可以。** 思路是把"编译"和"签名安装"拆成两件事——
 
 - 编译：丢给 GitHub 免费的 macOS 机器（云端已经装好 Xcode，不占你硬盘）；
