@@ -22,6 +22,9 @@ final class PiPSubtitleController: NSObject, ObservableObject {
     private var heartbeat: Timer?
     private var currentOriginal = ""
     private var currentTranslation = ""
+    /// 渲染结果缓存：文本没变时复用上一帧，避免每秒重新排版一次 1280×720
+    private var renderedImage: CGImage?
+    private var renderedKey: String = ""
 
     // MARK: - 视图
 
@@ -96,10 +99,13 @@ final class PiPSubtitleController: NSObject, ObservableObject {
     }
 
     private func renderFrame() {
-        guard let pixelBuffer = TextFrameRenderer.makePixelBuffer(
-            original: currentOriginal,
-            translation: currentTranslation
-        ) else { return }
+        let key = currentOriginal + "\u{1F}" + currentTranslation
+        if key != renderedKey || renderedImage == nil {
+            renderedImage = TextFrameRenderer.makeImage(original: currentOriginal, translation: currentTranslation)
+            renderedKey = key
+        }
+        guard let image = renderedImage,
+              let pixelBuffer = TextFrameRenderer.makePixelBuffer(from: image) else { return }
         guard let sampleBuffer = TextFrameRenderer.makeSampleBuffer(from: pixelBuffer) else { return }
         if displayLayer.status == .failed {
             displayLayer.flush()
@@ -224,7 +230,11 @@ enum TextFrameRenderer {
     }
 
     static func makePixelBuffer(original: String, translation: String) -> CVPixelBuffer? {
-        guard let cgImage = makeImage(original: original, translation: translation) else { return nil }
+        guard let image = makeImage(original: original, translation: translation) else { return nil }
+        return makePixelBuffer(from: image)
+    }
+
+    static func makePixelBuffer(from cgImage: CGImage) -> CVPixelBuffer? {
         let width = Int(canvas.width)
         let height = Int(canvas.height)
         let attributes: [String: Any] = [

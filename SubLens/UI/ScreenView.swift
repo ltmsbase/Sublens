@@ -29,7 +29,7 @@ struct ScreenView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .background(Palette.background.ignoresSafeArea())
+            .background { LiquidBackground() }
             .navigationTitle("屏幕字幕")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
@@ -121,8 +121,7 @@ struct ScreenView: View {
                         Text(env.pip.isActive ? "关闭浮窗" : "开启浮窗")
                             .font(.caption.weight(.semibold))
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Palette.accent)
+                    .buttonStyle(GlassButtonStyle(prominent: true))
                 }
             }
 
@@ -164,18 +163,16 @@ struct ScreenView: View {
                 showHowTo = true
             }
         } label: {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: env.isScreenRunning ? "stop.fill" : "rectangle.dashed.badge.record")
                 Text(env.isScreenRunning ? "停止屏幕字幕" : "开始屏幕字幕")
                     .fontWeight(.semibold)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, 4)
         }
-        .buttonStyle(.plain)
-        .background(env.isScreenRunning ? Color(red: 0.85, green: 0.24, blue: 0.28) : Palette.accent,
-                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .foregroundStyle(env.isScreenRunning ? .white : .black)
+        .buttonStyle(GlassButtonStyle(tint: env.isScreenRunning ? Palette.danger : .clear,
+                                     prominent: !env.isScreenRunning))
     }
 }
 
@@ -226,7 +223,7 @@ struct HowToSheet: View {
                 }
                 .padding(16)
             }
-            .background(Palette.background.ignoresSafeArea())
+            .background { LiquidBackground() }
             .navigationTitle("屏幕字幕说明")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

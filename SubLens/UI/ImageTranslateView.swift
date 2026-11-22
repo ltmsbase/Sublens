@@ -43,7 +43,7 @@ struct ImageTranslateView: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 16)
-            .background(Palette.background.ignoresSafeArea())
+            .background { LiquidBackground() }
             .navigationTitle("识图翻译")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showCamera) {
@@ -76,7 +76,12 @@ struct ImageTranslateView: View {
                     .padding(.vertical, 13)
             }
             .buttonStyle(.plain)
-            .background(Palette.accent, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(LinearGradient(colors: [Palette.accent, Palette.accentDeep],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .shadow(color: Palette.accent.opacity(0.35), radius: 14, y: 6)
+            }
             .foregroundStyle(.black)
 
             if UIImagePickerController.isSourceTypeAvailable(.camera) {

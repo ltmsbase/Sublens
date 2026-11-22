@@ -186,27 +186,30 @@ final class SpeechService: ObservableObject {
 
         let punctuated = suffix.hasSuffix("。") || suffix.hasSuffix("！") || suffix.hasSuffix("？")
             || suffix.hasSuffix(".") || suffix.hasSuffix("!") || suffix.hasSuffix("?")
-        guard force || punctuated || suffix.count >= 42 else { return }
+        // 门槛放低：标点、18 个字符、或 0.7 秒静音就立刻送去翻译
+        guard force || punctuated || suffix.count >= 18 else { return }
 
         committedCount = text.count
         DispatchQueue.main.async {
             self.onFinal?(suffix)
+            self.partialText = ""
         }
     }
 
     private func scheduleTimers() {
         restartTimer?.invalidate()
         // 系统识别任务跑太久容易静默失效，定期重建一次
-        restartTimer = Timer.scheduledTimer(withTimeInterval: 55, repeats: true) { [weak self] _ in
+        restartTimer = Timer.scheduledTimer(withTimeInterval: 45, repeats: true) { [weak self] _ in
             guard let self, self.isRunning else { return }
             self.startTask()
             DispatchQueue.main.async { self.partialText = "" }
         }
 
         silenceTimer?.invalidate()
-        silenceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        // 静音检测跑得更密，断句更快
+        silenceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
             guard let self, self.isRunning else { return }
-            if Date().timeIntervalSince(self.lastPartialAt) > 1.2 {
+            if Date().timeIntervalSince(self.lastPartialAt) > 0.7 {
                 let snapshot = self.partialText
                 self.maybeCommit(snapshot, force: true)
             }

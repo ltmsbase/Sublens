@@ -17,6 +17,7 @@ struct RootView: View {
             SettingsView()
                 .tabItem { Label("设置", systemImage: "gearshape") }
         }
+        .tint(Palette.accent)
         // 常驻的会话来源：语种一变，系统会带着新会话再回调一次
         .translationTask(env.translationConfiguration) { session in
             await env.translator.install(session)

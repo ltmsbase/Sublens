@@ -20,6 +20,11 @@ final class Translator: ObservableObject {
     @Published var openAIKey = ""
 
     private var session: TranslationSession?
+
+    /// 译文缓存：屏幕 OCR 会反复识别到同样的行，命中缓存直接返回，省掉整轮翻译耗时
+    private var cache: [String: String] = [:]
+    private var cacheOrder: [String] = []
+    private let cacheLimit = 400
     /// 端上翻译连续失败时先走云端，避免每句都先卡一次超时
     private var onDeviceFailed = false
 
@@ -39,12 +44,19 @@ final class Translator: ObservableObject {
         onDeviceFailed = false
         lastError = nil
         engineDescription = "端上翻译"
+        cache.removeAll()
+        cacheOrder.removeAll()
     }
 
     func translate(_ text: String, from source: String, to target: String) async -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         guard source != target else { return trimmed }
+
+        let cacheKey = "\(source)>\(target)|\(trimmed)"
+        if let hit = cache[cacheKey] {
+            return hit
+        }
 
         isBusy = true
         defer { isBusy = false }
@@ -54,6 +66,7 @@ final class Translator: ObservableObject {
                 let response = try await session.translate(trimmed)
                 engineDescription = "端上翻译"
                 lastError = nil
+                store(cacheKey, response.targetText)
                 return response.targetText
             } catch {
                 onDeviceFailed = true
@@ -64,8 +77,22 @@ final class Translator: ObservableObject {
 
         guard cloudFallbackEnabled else { return nil }
         let cloud = await cloudTranslate(trimmed, from: source, to: target)
-        if cloud != nil { engineDescription = "云端兜底" }
+        if let cloud {
+            engineDescription = "云端兜底"
+            store(cacheKey, cloud)
+        }
         return cloud
+    }
+
+    private func store(_ key: String, _ value: String) {
+        if cache[key] == nil {
+            cacheOrder.append(key)
+            if cacheOrder.count > cacheLimit {
+                let old = cacheOrder.removeFirst()
+                cache.removeValue(forKey: old)
+            }
+        }
+        cache[key] = value
     }
 
     // MARK: - 云端兜底
