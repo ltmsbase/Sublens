@@ -232,6 +232,16 @@ struct SubtitleRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 4 : 6) {
+            if line.kind == .screen || line.kind == .media {
+                HStack(spacing: 4) {
+                    Image(systemName: line.kind == .media ? "waveform" : "text.viewfinder")
+                        .font(.system(size: 9, weight: .bold))
+                    Text(line.kind == .media ? "媒体" : "画面")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(line.kind == .media ? Palette.accent : Palette.secondaryText)
+            }
+
             if isPending {
                 // 译文还在路上：原文先用正文大小占位，后面补译文时不会跳版
                 HStack(alignment: .firstTextBaseline, spacing: 8) {

@@ -19,7 +19,7 @@ struct ScreenView: View {
                     }
 
                     modeCard
-                    if !env.mediaMode {
+                    if env.screenTextEnabled {
                         regionCard
                     }
 
@@ -150,22 +150,33 @@ struct ScreenView: View {
         SectionCard(title: "翻译方式") {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    modeChip(title: "屏幕文字", icon: "text.viewfinder", active: !env.mediaMode) {
-                        env.mediaMode = false
+                    modeChip(title: "画面文字", icon: "text.viewfinder", active: env.screenTextEnabled) {
+                        env.screenTextEnabled.toggle()
                     }
-                    modeChip(title: "媒体声音", icon: "waveform", active: env.mediaMode) {
-                        env.mediaMode = true
+                    modeChip(title: "媒体声音", icon: "waveform", active: env.mediaAudioEnabled) {
+                        env.mediaAudioEnabled.toggle()
                     }
                     Spacer(minLength: 0)
                 }
 
-                Text(env.mediaMode
-                     ? "转录手机正在播放的视频或音乐里的人声，再翻译成字幕。受 DRM 保护的流媒体系统只给静音，识别不到。"
-                     : "识别屏幕上的文字。如果视频人声才是你要的内容，切到「媒体声音」。")
+                Text(modeHint)
                     .font(.caption2)
                     .foregroundStyle(Palette.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private var modeHint: String {
+        switch (env.screenTextEnabled, env.mediaAudioEnabled) {
+        case (true, true):
+            return "两条通道同时工作：画中画上方是画面文字，下方是媒体人声。同时开更耗电，也会更热。"
+        case (true, false):
+            return "只识别屏幕上的文字。想看视频里的人声翻译，把「媒体声音」也打开。"
+        case (false, true):
+            return "只转录手机正在播放的媒体人声。受 DRM 保护的流媒体系统只给静音，识别不到。"
+        case (false, false):
+            return "两个都关着，开始后不会产生任何字幕。"
         }
     }
 
@@ -240,11 +251,13 @@ struct ScreenView: View {
     private var subtitleList: some View {
         if env.screenLines.isEmpty {
             if env.isScreenRunning {
-                EmptyHint(icon: env.mediaMode ? "waveform" : "rectangle.dashed",
-                          title: env.mediaMode ? "等待媒体声音" : "等待画面文字",
-                          detail: env.mediaMode
-                          ? "打开要看的视频或音乐，人声出现后这里会出现双语字幕，浮窗里也会同步滚动。"
-                          : "切到有文字的页面（聊天、网页、字幕、菜单都行），识别到后这里会出现双语对照。")
+                EmptyHint(icon: env.screenTextEnabled ? "rectangle.dashed" : "waveform",
+                          title: env.screenTextEnabled ? "等待画面文字" : "等待媒体声音",
+                          detail: env.screenTextEnabled && env.mediaAudioEnabled
+                          ? "两条通道都在等：切到有文字的页面，或播放一段有人的视频，字幕会分别以「画面」和「媒体」标出来。"
+                          : (env.mediaAudioEnabled
+                             ? "打开要看的视频或音乐，人声出现后这里会出现双语字幕，浮窗里也会同步滚动。"
+                             : "切到有文字的页面（聊天、网页、字幕、菜单都行），识别到后这里会出现双语对照。"))
             }
         } else {
             SectionCard(title: "最近字幕") {

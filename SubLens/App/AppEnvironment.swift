@@ -65,14 +65,18 @@ final class AppEnvironment: ObservableObject {
     @Published var partialText: String = ""
     @Published var mediaPartialText: String = ""
 
-    /// 屏幕字幕的两种模式：false=识别屏幕文字，true=转录媒体声音
-    @Published var mediaMode: Bool = false {
+    /// 两条通道可以同时开：画面文字 + 媒体声音
+    @Published var screenTextEnabled: Bool = true {
         didSet {
-            UserDefaults.standard.set(mediaMode, forKey: "mediaMode")
-            if isScreenRunning {
-                screenService.setModes(ocr: !mediaMode, audio: mediaMode)
-                applyMediaFeed()
-            }
+            UserDefaults.standard.set(screenTextEnabled, forKey: "screenText")
+            syncScreenModes()
+        }
+    }
+
+    @Published var mediaAudioEnabled: Bool = false {
+        didSet {
+            UserDefaults.standard.set(mediaAudioEnabled, forKey: "mediaMode")
+            syncScreenModes()
         }
     }
     @Published var statusMessage: String?
@@ -94,7 +98,13 @@ final class AppEnvironment: ObservableObject {
         }
         speaker.enabled = ttsEnabled
         if UserDefaults.standard.object(forKey: "mediaMode") != nil {
-            mediaMode = UserDefaults.standard.bool(forKey: "mediaMode")
+            mediaAudioEnabled = UserDefaults.standard.bool(forKey: "mediaMode")
+        }
+        if UserDefaults.standard.object(forKey: "screenText") != nil {
+            screenTextEnabled = UserDefaults.standard.bool(forKey: "screenText")
+        } else if mediaAudioEnabled {
+            // 老版本是二选一：之前选了媒体，就把屏幕文字关掉保持原样
+            screenTextEnabled = false
         }
 
         wireMedia()
@@ -196,9 +206,16 @@ final class AppEnvironment: ObservableObject {
         }
     }
 
-    /// 按当前模式启动/停止媒体音频识别
+    /// 两条通道的开关都下发给扩展，并按需要启动媒体音频识别
+    private func syncScreenModes() {
+        guard isScreenRunning else { return }
+        screenService.setModes(ocr: screenTextEnabled, audio: mediaAudioEnabled)
+        applyMediaFeed()
+    }
+
+    /// 按当前开关启动/停止媒体音频识别
     private func applyMediaFeed() {
-        if isScreenRunning && mediaMode {
+        if isScreenRunning && mediaAudioEnabled {
             mediaSpeech.startFeed(localeID: liveLocale, autoDetect: LanguageOption.isAuto(sourceLanguage))
         } else {
             mediaSpeech.stop()
@@ -261,7 +278,7 @@ final class AppEnvironment: ObservableObject {
         keeper.start()
         pip.reset()
         screenService.applyAutoDetect(LanguageOption.isAuto(sourceLanguage))
-        screenService.setModes(ocr: !mediaMode, audio: mediaMode)
+        screenService.setModes(ocr: screenTextEnabled, audio: mediaAudioEnabled)
         screenService.start()
         applyMediaFeed()
         do {
@@ -341,7 +358,7 @@ final class AppEnvironment: ObservableObject {
         let placeholder = SubtitleLine(original: trimmed, translation: "", kind: kind)
         appendLine(placeholder)
         if kind == .screen || kind == .media {
-            pip.push(original: trimmed)
+            pip.push(original: trimmed, lane: kind == .media ? .media : .screen)
         }
 
         pending.append((trimmed, kind, placeholder.id, speak))
