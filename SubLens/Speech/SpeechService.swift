@@ -11,8 +11,8 @@ final class SpeechService: ObservableObject {
     @Published var level: Float = 0
     @Published var errorMessage: String?
 
-    /// 一句话结束（准备翻译）
-    var onFinal: ((String) -> Void)?
+    /// 一句话结束（准备翻译）；Bool 表示是否是真正的句子结尾（可播报）
+    var onFinal: ((String, Bool) -> Void)?
     /// 实时中间结果（用于即时字幕）
     var onPartial: ((String) -> Void)?
 
@@ -23,7 +23,9 @@ final class SpeechService: ObservableObject {
     private var tapInstalled = false
     private var restartTimer: Timer?
     private var silenceTimer: Timer?
-    private var committedCount = 0
+    /// 已经提交给翻译的那部分文本（用于计算未提交的尾巴，避免系统改写导致重复）
+    private var committedPrefix = ""
+    private var lastFullText = ""
     private var lastPartialAt = Date()
     private var localeID = "en-US"
 
@@ -155,7 +157,8 @@ final class SpeechService: ObservableObject {
             request.requiresOnDeviceRecognition = true
         }
         self.request = request
-        committedCount = 0
+        committedPrefix = ""
+        lastFullText = ""
         lastPartialAt = Date()
 
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
@@ -163,11 +166,24 @@ final class SpeechService: ObservableObject {
             if let result {
                 let text = result.bestTranscription.formattedString
                 self.lastPartialAt = Date()
-                DispatchQueue.main.async {
-                    self.partialText = text
-                    self.onPartial?(text)
+                self.lastFullText = text
+
+                // 已经提交过的部分不再重复显示；系统改写了已提交前缀时，本周期不提交，避免错位与重复
+                let tail: String
+                if text.hasPrefix(self.committedPrefix) {
+                    tail = String(text.dropFirst(self.committedPrefix.count))
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                } else {
+                    tail = ""
                 }
-                self.maybeCommit(text, force: result.isFinal)
+
+                DispatchQueue.main.async {
+                    self.partialText = tail
+                }
+                if !tail.isEmpty {
+                    DispatchQueue.main.async { self.onPartial?(tail) }
+                }
+                self.maybeCommit(tail: tail, fullText: text, force: result.isFinal)
             }
             if let error {
                 let nsError = error as NSError
@@ -179,19 +195,21 @@ final class SpeechService: ObservableObject {
         }
     }
 
-    private func maybeCommit(_ text: String, force: Bool = false) {
-        guard text.count > committedCount else { return }
-        let suffix = String(text.dropFirst(committedCount)).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard suffix.count >= 2 else { return }
+    private func maybeCommit(tail: String, fullText: String, force: Bool = false) {
+        guard tail.count >= 2 else { return }
 
-        let punctuated = suffix.hasSuffix("。") || suffix.hasSuffix("！") || suffix.hasSuffix("？")
-            || suffix.hasSuffix(".") || suffix.hasSuffix("!") || suffix.hasSuffix("?")
-        // 门槛放低：标点、18 个字符、或 0.7 秒静音就立刻送去翻译
-        guard force || punctuated || suffix.count >= 18 else { return }
+        // 只有三种情况才算「一句话说完」：系统给出最终结果、出现终止标点、静音超过阈值。
+        // 不再按字数硬切——那正是「一句话被切成两半、后一半又被纠正」的根源。
+        let punctuated = tail.hasSuffix("。") || tail.hasSuffix("！") || tail.hasSuffix("？")
+            || tail.hasSuffix(".") || tail.hasSuffix("!") || tail.hasSuffix("?")
+        let silent = Date().timeIntervalSince(lastPartialAt) > 0.9
 
-        committedCount = text.count
+        guard force || punctuated || silent else { return }
+
+        committedPrefix = fullText
+        let isSentenceEnd = force || punctuated
         DispatchQueue.main.async {
-            self.onFinal?(suffix)
+            self.onFinal?(tail, isSentenceEnd)
             self.partialText = ""
         }
     }
@@ -209,9 +227,8 @@ final class SpeechService: ObservableObject {
         // 静音检测跑得更密，断句更快
         silenceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
             guard let self, self.isRunning else { return }
-            if Date().timeIntervalSince(self.lastPartialAt) > 0.7 {
-                let snapshot = self.partialText
-                self.maybeCommit(snapshot, force: true)
+            if Date().timeIntervalSince(self.lastPartialAt) > 0.9, !self.partialText.isEmpty {
+                self.maybeCommit(tail: self.partialText, fullText: self.lastFullText, force: false)
             }
         }
     }

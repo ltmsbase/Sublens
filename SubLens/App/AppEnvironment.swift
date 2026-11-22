@@ -50,10 +50,11 @@ final class AppEnvironment: ObservableObject {
     @Published var isScreenRunning = false
     @Published var isPiPActive = false
 
-    private var pending: [(text: String, kind: SubtitleKind, id: UUID)] = []
+    private var pending: [(text: String, kind: SubtitleKind, id: UUID, speak: Bool)] = []
     private var draining = false
     private var cancellables = Set<AnyCancellable>()
     private var backgroundObserver: NSObjectProtocol?
+    private var speechTask: Task<Void, Never>?
 
     init() {
         if let saved = UserDefaults.standard.string(forKey: "srcLang") { sourceLanguage = saved }
@@ -114,10 +115,14 @@ final class AppEnvironment: ObservableObject {
 
     private func wireSpeech() {
         speech.onPartial = { [weak self] text in
-            self?.partialText = text
+            guard let self else { return }
+            self.partialText = text
+            // 又开口了：取消还没播出去的译文，避免「边识别边念上一句」
+            self.speechTask?.cancel()
+            self.speechTask = nil
         }
-        speech.onFinal = { [weak self] text in
-            self?.enqueue(text, kind: .microphone)
+        speech.onFinal = { [weak self] text, isSentenceEnd in
+            self?.enqueue(text, kind: .microphone, speak: isSentenceEnd)
         }
     }
 
@@ -147,6 +152,8 @@ final class AppEnvironment: ObservableObject {
     }
 
     func stopLive() {
+        speechTask?.cancel()
+        speechTask = nil
         speech.stop()
         isLiveRunning = false
         partialText = ""
@@ -231,7 +238,7 @@ final class AppEnvironment: ObservableObject {
 
     // MARK: - 翻译队列（串行，保证字幕顺序不乱）
 
-    private func enqueue(_ text: String, kind: SubtitleKind) {
+    private func enqueue(_ text: String, kind: SubtitleKind, speak: Bool = true) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return }
 
@@ -242,7 +249,7 @@ final class AppEnvironment: ObservableObject {
             pip.update(original: trimmed, translation: "")
         }
 
-        pending.append((trimmed, kind, placeholder.id))
+        pending.append((trimmed, kind, placeholder.id, speak))
         if pending.count > 10 {
             pending.removeFirst(pending.count - 10)
         }
@@ -282,8 +289,14 @@ final class AppEnvironment: ObservableObject {
             // 原地补译文，不新增行，避免重复和跳动
             fillTranslation(id: item.id, with: translation)
 
-            if ttsEnabled, !translation.isEmpty {
-                speaker.speak(translation, targetLanguage: targetLanguage)
+            // 只有「句子真的说完了」才播报，并且留 0.35 秒缓冲：用户一继续说话就撤销
+            if ttsEnabled, item.speak, !translation.isEmpty {
+                speechTask?.cancel()
+                speechTask = Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    guard !Task.isCancelled else { return }
+                    speaker.speak(translation, targetLanguage: targetLanguage)
+                }
             }
 
             if item.kind == .screen {
