@@ -1,0 +1,543 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D10FC9A6C0BC0793F887A1C9 /* SubLensApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84FD9C40428E4DE276C4C456 /* SubLensApp.swift */; };
+		DEFABD44944DE152EDB55186 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E928E0C70BD14814F8D72657 /* AppEnvironment.swift */; };
+		BD77C41B3104337F8DABE292 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7BB859B8C66C0215377A73 /* Models.swift */; };
+		0429EC46D260FD761B538444 /* SharedBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A59555E182652DDC99ACFBE /* SharedBus.swift */; };
+		9B5759B27EB61529E45B182B /* BridgeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8D0B41C93335A74E20F3F94 /* BridgeTransport.swift */; };
+		9B531D120A68D9731F0303F8 /* Translator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08D3C543AB0F846F5D7F5037 /* Translator.swift */; };
+		276EB9F4B4A8B3FBE0855C09 /* SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 613183C1C781F7E72D566FE3 /* SpeechService.swift */; };
+		7D133BA9B8B32CBB61712F8F /* SpeechSynthesizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D81E85AD6AC280B07413AD /* SpeechSynthesizer.swift */; };
+		D9448BECBF3AD69EC5433139 /* ScreenSubtitleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8821D96DB8DDE57473EA87B7 /* ScreenSubtitleService.swift */; };
+		670D03F2A01B964BE3E5483A /* SilentAudioKeeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65DDC97DDE1FBD4A55B201E5 /* SilentAudioKeeper.swift */; };
+		F335685E43B2FAAC6263CB0E /* PiPSubtitleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B857397087EB7B9BA59D0FD /* PiPSubtitleController.swift */; };
+		070B3FC329C27CAB70EE6BC2 /* ImageOCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289CF1BA313D7735E4D7428F /* ImageOCRService.swift */; };
+		96025437EE859EDE6442E990 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4A50394FD0267A89DB5E465 /* Components.swift */; };
+		5F26EB9E1DBC442D15F3208F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F31297A46EA1B8EAAFF0C012 /* RootView.swift */; };
+		E1D707698D4D7E1F8B2E4309 /* LiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CFC5929CED1A4BD7A113649 /* LiveView.swift */; };
+		7476FC4BB7EF416B506C2CEF /* ScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E989136083A220FE721EA5C /* ScreenView.swift */; };
+		E219CE71CEB246E5C7B4F9CA /* ImageTranslateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83327C288D5372A3E2B3B0E5 /* ImageTranslateView.swift */; };
+		A17B86883E647D80256C4B8E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5926EF8958CAE31E3D6A2CA2 /* SettingsView.swift */; };
+		C12ACA3EF6129AFC29C32F8C /* LanguagePickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 966F6748FD8F26D7C2B4AC4F /* LanguagePickerSheet.swift */; };
+		D230F1FE5453B6FB4E00055E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A5A1EAD11A39A5650C22C310 /* Assets.xcassets */; };
+		6C6F1733A7572159FBF6B4E5 /* ScreenBroadcastExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 657350E34AFB37D463DC7294 /* ScreenBroadcastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		109CFEF575645AFCAFE041A0 /* SampleHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A939068E0A285521DA08AE5 /* SampleHandler.swift */; };
+		1DC9314B323C3228BF5E564A /* ScreenOCRWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5BBD767D4A233BDCD79098F /* ScreenOCRWorker.swift */; };
+		B02BD1BADD691E99C8927D53 /* SharedBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A59555E182652DDC99ACFBE /* SharedBus.swift */; };
+		5611D5E3B85175DF57CAC374 /* BridgeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8D0B41C93335A74E20F3F94 /* BridgeTransport.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D5A381026795B88E6997436F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595;
+			proxyType = 1;
+			remoteGlobalIDString = B38F1907A909A3BFAB09298F;
+			remoteInfo = ScreenBroadcastExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		6B461CD41EA51ABC93F86EC9 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6C6F1733A7572159FBF6B4E5 /* ScreenBroadcastExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		84FD9C40428E4DE276C4C456 /* SubLensApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubLensApp.swift; sourceTree = "<group>"; };
+		E928E0C70BD14814F8D72657 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		DF7BB859B8C66C0215377A73 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		8A59555E182652DDC99ACFBE /* SharedBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedBus.swift; sourceTree = "<group>"; };
+		E8D0B41C93335A74E20F3F94 /* BridgeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeTransport.swift; sourceTree = "<group>"; };
+		08D3C543AB0F846F5D7F5037 /* Translator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Translator.swift; sourceTree = "<group>"; };
+		613183C1C781F7E72D566FE3 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
+		A2D81E85AD6AC280B07413AD /* SpeechSynthesizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechSynthesizer.swift; sourceTree = "<group>"; };
+		8821D96DB8DDE57473EA87B7 /* ScreenSubtitleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenSubtitleService.swift; sourceTree = "<group>"; };
+		65DDC97DDE1FBD4A55B201E5 /* SilentAudioKeeper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilentAudioKeeper.swift; sourceTree = "<group>"; };
+		4B857397087EB7B9BA59D0FD /* PiPSubtitleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiPSubtitleController.swift; sourceTree = "<group>"; };
+		289CF1BA313D7735E4D7428F /* ImageOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageOCRService.swift; sourceTree = "<group>"; };
+		A4A50394FD0267A89DB5E465 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		F31297A46EA1B8EAAFF0C012 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		0CFC5929CED1A4BD7A113649 /* LiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveView.swift; sourceTree = "<group>"; };
+		4E989136083A220FE721EA5C /* ScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenView.swift; sourceTree = "<group>"; };
+		83327C288D5372A3E2B3B0E5 /* ImageTranslateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageTranslateView.swift; sourceTree = "<group>"; };
+		5926EF8958CAE31E3D6A2CA2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		966F6748FD8F26D7C2B4AC4F /* LanguagePickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguagePickerSheet.swift; sourceTree = "<group>"; };
+		A5A1EAD11A39A5650C22C310 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		EE3B8FA80F2763B3930A3112 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B8A623BBA5C49750EFBF2FD7 /* SubLens.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SubLens.entitlements; sourceTree = "<group>"; };
+		4FA38BC9B70BC9C2D5E62BC5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C157C9868FCBE958E8E8450C /* ScreenBroadcastExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ScreenBroadcastExtension.entitlements; sourceTree = "<group>"; };
+		2A939068E0A285521DA08AE5 /* SampleHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleHandler.swift; sourceTree = "<group>"; };
+		E5BBD767D4A233BDCD79098F /* ScreenOCRWorker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenOCRWorker.swift; sourceTree = "<group>"; };
+		996AD237BC284D463E664FFE /* SubLens.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SubLens.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		657350E34AFB37D463DC7294 /* ScreenBroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ScreenBroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0F87A878AEB94E823836E22B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB63E9FE1886F58A35850EDD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		60055299EA16A124653B84D7 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				E928E0C70BD14814F8D72657 /* AppEnvironment.swift */,
+				84FD9C40428E4DE276C4C456 /* SubLensApp.swift */,
+			);
+			sourceTree = "<group>";
+			path = App;
+		};
+		249D78835859496084DD61D9 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				E8D0B41C93335A74E20F3F94 /* BridgeTransport.swift */,
+				DF7BB859B8C66C0215377A73 /* Models.swift */,
+				8A59555E182652DDC99ACFBE /* SharedBus.swift */,
+			);
+			sourceTree = "<group>";
+			path = Core;
+		};
+		115C9EF03925C72724E2B7D9 /* Image */ = {
+			isa = PBXGroup;
+			children = (
+				289CF1BA313D7735E4D7428F /* ImageOCRService.swift */,
+			);
+			sourceTree = "<group>";
+			path = Image;
+		};
+		7E1ADE07DFBDD8D09F7321E3 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A5A1EAD11A39A5650C22C310 /* Assets.xcassets */,
+				EE3B8FA80F2763B3930A3112 /* Info.plist */,
+				B8A623BBA5C49750EFBF2FD7 /* SubLens.entitlements */,
+			);
+			sourceTree = "<group>";
+			path = Resources;
+		};
+		B37341BA13B6BE49D6F15866 /* Screen */ = {
+			isa = PBXGroup;
+			children = (
+				4B857397087EB7B9BA59D0FD /* PiPSubtitleController.swift */,
+				8821D96DB8DDE57473EA87B7 /* ScreenSubtitleService.swift */,
+				65DDC97DDE1FBD4A55B201E5 /* SilentAudioKeeper.swift */,
+			);
+			sourceTree = "<group>";
+			path = Screen;
+		};
+		DB126B7E5A60519ADDBA91A5 /* Speech */ = {
+			isa = PBXGroup;
+			children = (
+				613183C1C781F7E72D566FE3 /* SpeechService.swift */,
+				A2D81E85AD6AC280B07413AD /* SpeechSynthesizer.swift */,
+			);
+			sourceTree = "<group>";
+			path = Speech;
+		};
+		F85F7EC21BB385E1A520BE10 /* Translation */ = {
+			isa = PBXGroup;
+			children = (
+				08D3C543AB0F846F5D7F5037 /* Translator.swift */,
+			);
+			sourceTree = "<group>";
+			path = Translation;
+		};
+		C56CABFABBAEDB4C910E2ACB /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				A4A50394FD0267A89DB5E465 /* Components.swift */,
+				83327C288D5372A3E2B3B0E5 /* ImageTranslateView.swift */,
+				966F6748FD8F26D7C2B4AC4F /* LanguagePickerSheet.swift */,
+				0CFC5929CED1A4BD7A113649 /* LiveView.swift */,
+				F31297A46EA1B8EAAFF0C012 /* RootView.swift */,
+				4E989136083A220FE721EA5C /* ScreenView.swift */,
+				5926EF8958CAE31E3D6A2CA2 /* SettingsView.swift */,
+			);
+			sourceTree = "<group>";
+			path = UI;
+		};
+		2AE30A041C788ADF9D733A48 /* SubLens */ = {
+			isa = PBXGroup;
+			children = (
+				60055299EA16A124653B84D7 /* App */,
+				249D78835859496084DD61D9 /* Core */,
+				115C9EF03925C72724E2B7D9 /* Image */,
+				7E1ADE07DFBDD8D09F7321E3 /* Resources */,
+				B37341BA13B6BE49D6F15866 /* Screen */,
+				DB126B7E5A60519ADDBA91A5 /* Speech */,
+				F85F7EC21BB385E1A520BE10 /* Translation */,
+				C56CABFABBAEDB4C910E2ACB /* UI */,
+			);
+			sourceTree = "<group>";
+			path = SubLens;
+		};
+		DF34336E66928187F4B1CAB6 /* ScreenBroadcastExtension */ = {
+			isa = PBXGroup;
+			children = (
+				4FA38BC9B70BC9C2D5E62BC5 /* Info.plist */,
+				C157C9868FCBE958E8E8450C /* ScreenBroadcastExtension.entitlements */,
+				2A939068E0A285521DA08AE5 /* SampleHandler.swift */,
+				E5BBD767D4A233BDCD79098F /* ScreenOCRWorker.swift */,
+			);
+			sourceTree = "<group>";
+			path = ScreenBroadcastExtension;
+		};
+		113236722DEE1DC96F378B9D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				996AD237BC284D463E664FFE /* SubLens.app */,
+				657350E34AFB37D463DC7294 /* ScreenBroadcastExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		71DC27D9F8E3B109C877BFC4 /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				2AE30A041C788ADF9D733A48 /* SubLens */,
+				DF34336E66928187F4B1CAB6 /* ScreenBroadcastExtension */,
+				113236722DEE1DC96F378B9D /* Products */,
+			);
+			name = Main;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F01C2E624E08A72BC055B46F /* SubLens */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A25A21380B352A4D587DB751;
+			buildPhases = (
+				6B366E3A6159DC0A46CE6169 /* Sources */,
+				0F87A878AEB94E823836E22B /* Frameworks */,
+				34E903FB6EA77173817200D0 /* Resources */,
+				6B461CD41EA51ABC93F86EC9 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9A26EE7D3FD374EDBD9473C3 /* PBXTargetDependency */,
+			);
+			name = SubLens;
+			productName = SubLens;
+			productReference = 996AD237BC284D463E664FFE /* SubLens.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B38F1907A909A3BFAB09298F /* ScreenBroadcastExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BEC1578385C1E2CC154BD89D;
+			buildPhases = (
+				05646A24AE3495D2C70C6EF6 /* Sources */,
+				BB63E9FE1886F58A35850EDD /* Frameworks */,
+				1EC2581673D41620CC048298 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ScreenBroadcastExtension;
+			productName = ScreenBroadcastExtension;
+			productReference = 657350E34AFB37D463DC7294 /* ScreenBroadcastExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					F01C2E624E08A72BC055B46F = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					B38F1907A909A3BFAB09298F = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 946392D46B65BE2E368A0D3B;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				zh_CN,
+				en,
+				Base,
+			);
+			mainGroup = 71DC27D9F8E3B109C877BFC4;
+			productRefGroup = 113236722DEE1DC96F378B9D;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F01C2E624E08A72BC055B46F,
+				B38F1907A909A3BFAB09298F,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		34E903FB6EA77173817200D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D230F1FE5453B6FB4E00055E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1EC2581673D41620CC048298 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		6B366E3A6159DC0A46CE6169 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D10FC9A6C0BC0793F887A1C9 /* SubLensApp.swift in Sources */,
+				DEFABD44944DE152EDB55186 /* AppEnvironment.swift in Sources */,
+				BD77C41B3104337F8DABE292 /* Models.swift in Sources */,
+				0429EC46D260FD761B538444 /* SharedBus.swift in Sources */,
+				9B5759B27EB61529E45B182B /* BridgeTransport.swift in Sources */,
+				9B531D120A68D9731F0303F8 /* Translator.swift in Sources */,
+				276EB9F4B4A8B3FBE0855C09 /* SpeechService.swift in Sources */,
+				7D133BA9B8B32CBB61712F8F /* SpeechSynthesizer.swift in Sources */,
+				D9448BECBF3AD69EC5433139 /* ScreenSubtitleService.swift in Sources */,
+				670D03F2A01B964BE3E5483A /* SilentAudioKeeper.swift in Sources */,
+				F335685E43B2FAAC6263CB0E /* PiPSubtitleController.swift in Sources */,
+				070B3FC329C27CAB70EE6BC2 /* ImageOCRService.swift in Sources */,
+				96025437EE859EDE6442E990 /* Components.swift in Sources */,
+				5F26EB9E1DBC442D15F3208F /* RootView.swift in Sources */,
+				E1D707698D4D7E1F8B2E4309 /* LiveView.swift in Sources */,
+				7476FC4BB7EF416B506C2CEF /* ScreenView.swift in Sources */,
+				E219CE71CEB246E5C7B4F9CA /* ImageTranslateView.swift in Sources */,
+				A17B86883E647D80256C4B8E /* SettingsView.swift in Sources */,
+				C12ACA3EF6129AFC29C32F8C /* LanguagePickerSheet.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		05646A24AE3495D2C70C6EF6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				109CFEF575645AFCAFE041A0 /* SampleHandler.swift in Sources */,
+				1DC9314B323C3228BF5E564A /* ScreenOCRWorker.swift in Sources */,
+				B02BD1BADD691E99C8927D53 /* SharedBus.swift in Sources */,
+				5611D5E3B85175DF57CAC374 /* BridgeTransport.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		9A26EE7D3FD374EDBD9473C3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595;
+			proxy = D5A381026795B88E6997436F;
+			target = B38F1907A909A3BFAB09298F;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		5E1134544568A0C1B09E583D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)");
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		5CD193DFD8A5008B34863530 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SubLens/Resources/SubLens.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SubLens/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sublens.livetranslate;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		24D7999F491D32422992DAB2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ScreenBroadcastExtension/ScreenBroadcastExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ScreenBroadcastExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sublens.livetranslate.ScreenBroadcast;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B3AFDE6F970A0432673383DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		3364EDEBD260CBF339B52DD5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SubLens/Resources/SubLens.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SubLens/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sublens.livetranslate;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B457D051FFA280D866596998 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ScreenBroadcastExtension/ScreenBroadcastExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ScreenBroadcastExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks");
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sublens.livetranslate.ScreenBroadcast;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		946392D46B65BE2E368A0D3B /* Build configuration list for PBXProject "SubLens" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E1134544568A0C1B09E583D /* Debug */,
+				B3AFDE6F970A0432673383DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A25A21380B352A4D587DB751 /* Build configuration list for PBXNativeTarget "SubLens" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5CD193DFD8A5008B34863530 /* Debug */,
+				3364EDEBD260CBF339B52DD5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BEC1578385C1E2CC154BD89D /* Build configuration list for PBXNativeTarget "ScreenBroadcastExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				24D7999F491D32422992DAB2 /* Debug */,
+				B457D051FFA280D866596998 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}
