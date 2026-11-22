@@ -226,15 +226,29 @@ struct SubtitleRow: View {
     let line: SubtitleLine
     var compact: Bool = false
 
+    private var isPending: Bool {
+        line.translation.isEmpty && !line.original.isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 4 : 6) {
+            if isPending {
+                // 译文还在路上：原文先用正文大小占位，后面补译文时不会跳版
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(line.original)
+                        .font(compact ? .subheadline.weight(.medium) : .title3.weight(.medium))
+                        .foregroundStyle(Color.white.opacity(0.92))
+                        .fixedSize(horizontal: false, vertical: true)
+                    PendingDots()
+                }
+            }
             if !line.translation.isEmpty {
                 Text(line.translation)
                     .font(compact ? .subheadline.weight(.medium) : .title3.weight(.semibold))
                     .foregroundStyle(.white)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if !line.original.isEmpty {
+            if !line.original.isEmpty && !isPending {
                 Text(line.original)
                     .font(compact ? .caption : .footnote)
                     .foregroundStyle(Palette.secondaryText)
@@ -309,6 +323,31 @@ struct EmptyHint: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 36)
+    }
+}
+
+// MARK: - 翻译中指示
+
+struct PendingDots: View {
+    @State private var animating = false
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .fill(Palette.accent.opacity(0.65))
+                    .frame(width: 4, height: 4)
+                    .scaleEffect(animating ? 1 : 0.5)
+                    .animation(
+                        .easeInOut(duration: 0.55)
+                        .repeatForever(autoreverses: true)
+                        .delay(Double(index) * 0.16),
+                        value: animating
+                    )
+            }
+        }
+        .onAppear { animating = true }
+        .accessibilityHidden(true)
     }
 }
 

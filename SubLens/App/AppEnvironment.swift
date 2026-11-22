@@ -50,7 +50,7 @@ final class AppEnvironment: ObservableObject {
     @Published var isScreenRunning = false
     @Published var isPiPActive = false
 
-    private var pending: [(text: String, kind: SubtitleKind)] = []
+    private var pending: [(text: String, kind: SubtitleKind, id: UUID)] = []
     private var draining = false
     private var cancellables = Set<AnyCancellable>()
     private var backgroundObserver: NSObjectProtocol?
@@ -234,11 +234,39 @@ final class AppEnvironment: ObservableObject {
     private func enqueue(_ text: String, kind: SubtitleKind) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return }
-        pending.append((trimmed, kind))
+
+        // 乐观渲染：原文先上屏，译文到了再原地补上，感知延迟直接砍掉翻译耗时
+        let placeholder = SubtitleLine(original: trimmed, translation: "", kind: kind)
+        appendLine(placeholder)
+        if kind == .screen {
+            pip.update(original: trimmed, translation: "")
+        }
+
+        pending.append((trimmed, kind, placeholder.id))
         if pending.count > 10 {
             pending.removeFirst(pending.count - 10)
         }
         Task { await drain() }
+    }
+
+    private func appendLine(_ line: SubtitleLine) {
+        switch line.kind {
+        case .screen:
+            screenLines.append(line)
+            if screenLines.count > 80 { screenLines.removeFirst(screenLines.count - 80) }
+        case .microphone, .image:
+            liveLines.append(line)
+            if liveLines.count > 80 { liveLines.removeFirst(liveLines.count - 80) }
+        }
+    }
+
+    /// 译文回来后，按 id 找到原占位行并原地替换译文
+    private func fillTranslation(id: UUID, with translation: String) {
+        if let index = screenLines.firstIndex(where: { $0.id == id }) {
+            screenLines[index].translation = translation
+        } else if let index = liveLines.firstIndex(where: { $0.id == id }) {
+            liveLines[index].translation = translation
+        }
     }
 
     private func drain() async {
@@ -251,15 +279,8 @@ final class AppEnvironment: ObservableObject {
                                                           to: targetLanguage) ?? ""
             guard !translation.isEmpty || translator.lastError == nil else { continue }
 
-            let line = SubtitleLine(original: item.text, translation: translation, kind: item.kind)
-            switch item.kind {
-            case .screen:
-                screenLines.append(line)
-                if screenLines.count > 80 { screenLines.removeFirst(screenLines.count - 80) }
-            case .microphone, .image:
-                liveLines.append(line)
-                if liveLines.count > 80 { liveLines.removeFirst(liveLines.count - 80) }
-            }
+            // 原地补译文，不新增行，避免重复和跳动
+            fillTranslation(id: item.id, with: translation)
 
             if ttsEnabled, !translation.isEmpty {
                 speaker.speak(translation, targetLanguage: targetLanguage)
