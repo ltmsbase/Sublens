@@ -26,7 +26,10 @@ final class ScreenSubtitleService: ObservableObject {
     private var timer: Timer?
     private var server: BridgeServer?
     private var latest: [RemoteScreenLine] = []
-    private var previous: Set<String> = []
+    /// 归一化文本 → 上次上屏时间，用于吃掉 OCR 抖动造成的重复
+    private var seen: [String: Date] = [:]
+    /// 最近上屏过的行，用于判断「同一句只是被切成了两段」
+    private var emitted: [(key: String, at: Date)] = []
 
     private static let regionKey = "screenRegion"
 
@@ -49,7 +52,8 @@ final class ScreenSubtitleService: ObservableObject {
         pushConfig()
         regionApplied = true
         // 换区域等于重来一遍，清掉历史快照，避免拿旧结果比对
-        previous = []
+        seen = [:]
+        emitted = []
         latest = []
     }
 
@@ -79,7 +83,8 @@ final class ScreenSubtitleService: ObservableObject {
         guard !isListening else { return }
         isListening = true
         statusText = "正在等待屏幕内容…"
-        previous = []
+        seen = [:]
+        emitted = []
         latest = []
 
         if SharedScreenBus.usesSharedContainer {
@@ -122,7 +127,8 @@ final class ScreenSubtitleService: ObservableObject {
         isListening = false
         statusText = ""
         snapshotCount = 0
-        previous = []
+        seen = [:]
+        emitted = []
         latest = []
     }
 
@@ -131,29 +137,81 @@ final class ScreenSubtitleService: ObservableObject {
             latest = SharedScreenBus.read()
         }
 
-        let texts = latest.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let rawTexts = latest.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { $0.count >= 2 }
-        snapshotCount = texts.count
 
-        if texts.isEmpty {
+        // 同一帧里 Vision 偶尔把同一行吐两遍（框重叠），先按归一化文本压一次
+        var uniqueTexts: [String] = []
+        var keys: [String] = []
+        for text in rawTexts {
+            let key = Self.normalizedKey(text)
+            guard !key.isEmpty, !keys.contains(key) else { continue }
+            keys.append(key)
+            uniqueTexts.append(text)
+        }
+        snapshotCount = uniqueTexts.count
+
+        if uniqueTexts.isEmpty {
             if timer != nil {
                 statusText = "还没有收到画面文字，确认录屏已选到「译幕」"
             }
             return
         }
         statusText = region.isFull
-            ? "整屏识别 · 已识别 \(texts.count) 行"
-            : "区域识别 · 已识别 \(texts.count) 行"
+            ? "整屏识别 · 已识别 \(uniqueTexts.count) 行"
+            : "区域识别 · 已识别 \(uniqueTexts.count) 行"
 
+        let now = Date()
         var fresh: [String] = []
-        for text in texts where !previous.contains(text) {
-            fresh.append(text)
-        }
-        previous = Set(texts)
-        guard !fresh.isEmpty else { return }
 
+        for (index, text) in uniqueTexts.enumerated() {
+            let key = keys[index]
+            // 3 秒内见过同一行 → 不重复上屏（闪烁、抖动、来回滚动都算同一行）
+            if let last = seen[key], now.timeIntervalSince(last) < 3 {
+                seen[key] = now
+                continue
+            }
+            // 同一句被切成两段/被拼成一段，4 秒内也算重复
+            if isNearDuplicate(key, at: now) {
+                seen[key] = now
+                continue
+            }
+            seen[key] = now
+            fresh.append(text)
+            emitted.append((key, now))
+        }
+
+        // 只保留最近 4 秒的上屏记录，以及 2 分钟内见过的文本，避免无限增长
+        emitted = emitted.filter { now.timeIntervalSince($0.at) < 4 }
+        if seen.count > 200 {
+            seen = seen.filter { now.timeIntervalSince($0.value) < 120 }
+        }
+
+        guard !fresh.isEmpty else { return }
         for text in fresh.prefix(4) {
             onNewLine?(text)
         }
+    }
+
+    /// 同一句话因 OCR 切分不同而「看起来是新行」：字符几乎一样、或一句包含另一句
+    private func isNearDuplicate(_ key: String, at now: Date) -> Bool {
+        for item in emitted where now.timeIntervalSince(item.at) < 4 {
+            if item.key == key { return true }
+            let shorter = min(item.key.count, key.count)
+            let longer = max(item.key.count, key.count)
+            guard shorter >= 4 else { continue }
+            guard Double(longer) <= Double(shorter) * 1.6 + 2 else { continue }
+            if item.key.contains(key) || key.contains(item.key) { return true }
+        }
+        return false
+    }
+
+    /// 去空白、去首尾标点、压小写，用来判断两帧内容是否其实是同一段文字
+    static func normalizedKey(_ text: String) -> String {
+        var core = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let edge = CharacterSet(charactersIn: " \t\n。．.,，；;:：!！?？、·—…\"'“”‘’()（）[]【】<>《》「」『』-")
+        core = core.trimmingCharacters(in: edge)
+        core = core.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return core.lowercased()
     }
 }

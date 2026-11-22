@@ -87,7 +87,8 @@ final class ScreenOCRWorker {
             return
         }
 
-        let joined = lines.joined(separator: "\n")
+        // 按归一化文本比较：只差标点、空格、大小写的重新识别不算变化，避免同一行被反复重发
+        let joined = lines.map { Self.normalizedKey($0) }.joined(separator: "\n")
         guard joined != lastJoined else { return }
         lastJoined = joined
 
@@ -97,6 +98,15 @@ final class ScreenOCRWorker {
             return RemoteScreenLine(id: identifier, text: item.element, ts: timestamp)
         }
         SharedScreenBus.write(payload)
+    }
+
+    /// 去空白、去首尾标点、压小写，用来判断两帧内容是否其实是同一段文字
+    static func normalizedKey(_ text: String) -> String {
+        var core = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let edge = CharacterSet(charactersIn: " \t\n。．.,，；;:：!！?？、·—…\"'“”‘’()（）[]【】<>《》「」『』-")
+        core = core.trimmingCharacters(in: edge)
+        core = core.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return core.lowercased()
     }
 
     private func performOCR(on pixelBuffer: CVPixelBuffer, region: ScreenRegion, autoDetect: Bool) -> [String] {

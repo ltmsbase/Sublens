@@ -350,9 +350,34 @@ final class AppEnvironment: ObservableObject {
 
     // MARK: - 翻译队列（串行，保证字幕顺序不乱）
 
+    private var recentLineKeys: [String: Date] = [:]
+
+    /// 去空白、去首尾标点，用来判断两行是不是同一句
+    static func normalizedKey(_ text: String) -> String {
+        var core = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let edge = CharacterSet(charactersIn: " \t\n。．.,，；;:：!！?？、·—…\"'“”‘’()（）[]【】<>《》「」『』-")
+        core = core.trimmingCharacters(in: edge)
+        core = core.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return core.lowercased()
+    }
+
     private func enqueue(_ text: String, kind: SubtitleKind, speak: Bool = true) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return }
+
+        // 最后一道闸：同一段文字在时间窗内已经上过屏，就不再建行、不再翻译、也不再往画中画塞
+        if kind == .screen || kind == .media {
+            let key = Self.normalizedKey(trimmed)
+            let window: TimeInterval = kind == .media ? 2 : 12
+            if let last = recentLineKeys[key], Date().timeIntervalSince(last) < window {
+                return
+            }
+            recentLineKeys[key] = Date()
+            if recentLineKeys.count > 120 {
+                let cutoff = Date().addingTimeInterval(-120)
+                recentLineKeys = recentLineKeys.filter { $0.value > cutoff }
+            }
+        }
 
         // 乐观渲染：原文先上屏，译文到了再原地补上，感知延迟直接砍掉翻译耗时
         let placeholder = SubtitleLine(original: trimmed, translation: "", kind: kind)
