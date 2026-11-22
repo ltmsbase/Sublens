@@ -18,6 +18,7 @@ APP_SOURCES = [
     "SubLens/App/SubLensApp.swift",
     "SubLens/App/AppEnvironment.swift",
     "SubLens/Core/Models.swift",
+    "SubLens/Core/LanguageDetector.swift",
     "SubLens/Core/SharedBus.swift",
     "SubLens/Core/BridgeTransport.swift",
     "SubLens/Translation/Translator.swift",

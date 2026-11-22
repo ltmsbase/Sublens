@@ -10,6 +10,7 @@
 		D10FC9A6C0BC0793F887A1C9 /* SubLensApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84FD9C40428E4DE276C4C456 /* SubLensApp.swift */; };
 		DEFABD44944DE152EDB55186 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = E928E0C70BD14814F8D72657 /* AppEnvironment.swift */; };
 		BD77C41B3104337F8DABE292 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF7BB859B8C66C0215377A73 /* Models.swift */; };
+		9BA248E38CE23D59299FFAD1 /* LanguageDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFA02AB071ADC9EA23E31CEA /* LanguageDetector.swift */; };
 		0429EC46D260FD761B538444 /* SharedBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A59555E182652DDC99ACFBE /* SharedBus.swift */; };
 		9B5759B27EB61529E45B182B /* BridgeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8D0B41C93335A74E20F3F94 /* BridgeTransport.swift */; };
 		9B531D120A68D9731F0303F8 /* Translator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08D3C543AB0F846F5D7F5037 /* Translator.swift */; };
@@ -63,6 +64,7 @@
 		84FD9C40428E4DE276C4C456 /* SubLensApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubLensApp.swift; sourceTree = "<group>"; };
 		E928E0C70BD14814F8D72657 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		DF7BB859B8C66C0215377A73 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		BFA02AB071ADC9EA23E31CEA /* LanguageDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageDetector.swift; sourceTree = "<group>"; };
 		8A59555E182652DDC99ACFBE /* SharedBus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedBus.swift; sourceTree = "<group>"; };
 		E8D0B41C93335A74E20F3F94 /* BridgeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeTransport.swift; sourceTree = "<group>"; };
 		08D3C543AB0F846F5D7F5037 /* Translator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Translator.swift; sourceTree = "<group>"; };
@@ -122,6 +124,7 @@
 			isa = PBXGroup;
 			children = (
 				E8D0B41C93335A74E20F3F94 /* BridgeTransport.swift */,
+				BFA02AB071ADC9EA23E31CEA /* LanguageDetector.swift */,
 				DF7BB859B8C66C0215377A73 /* Models.swift */,
 				8A59555E182652DDC99ACFBE /* SharedBus.swift */,
 			);
@@ -336,6 +339,7 @@
 				D10FC9A6C0BC0793F887A1C9 /* SubLensApp.swift in Sources */,
 				DEFABD44944DE152EDB55186 /* AppEnvironment.swift in Sources */,
 				BD77C41B3104337F8DABE292 /* Models.swift in Sources */,
+				9BA248E38CE23D59299FFAD1 /* LanguageDetector.swift in Sources */,
 				0429EC46D260FD761B538444 /* SharedBus.swift in Sources */,
 				9B5759B27EB61529E45B182B /* BridgeTransport.swift in Sources */,
 				9B531D120A68D9731F0303F8 /* Translator.swift in Sources */,

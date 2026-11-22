@@ -5,11 +5,20 @@ import UIKit
 import CoreMedia
 import CoreVideo
 
+/// 画中画里的一行字幕
+struct PiPRow: Identifiable, Equatable {
+    var id: UUID
+    var original: String
+    var translation: String
+}
+
 /// 浮窗字幕（画中画）。
 ///
 /// iOS 不允许第三方 App 直接在别的 App 上盖一层界面，能"合法"浮在最上层的只有画中画。
 /// 这里把字幕渲染成视频帧喂给 AVSampleBufferDisplayLayer，再让它在画中画里显示，
 /// 于是可以一边刷别的 App，一边在角落看到实时译文。
+///
+/// 多行滚动：保留最近 3 行，新的一行从底部滑入，旧行整体上移，形成连续滚动而不是整块替换。
 final class PiPSubtitleController: NSObject, ObservableObject {
 
     @Published private(set) var isActive = false
@@ -20,11 +29,12 @@ final class PiPSubtitleController: NSObject, ObservableObject {
     private let displayLayer = AVSampleBufferDisplayLayer()
     private var hostView: UIView?
     private var heartbeat: Timer?
-    private var currentOriginal = ""
-    private var currentTranslation = ""
+    private var rows: [PiPRow] = []
     /// 渲染结果缓存：文本没变时复用上一帧，避免每秒重新排版一次 1280×720
     private var renderedImage: CGImage?
     private var renderedKey: String = ""
+
+    private let maxRows = 3
 
     // MARK: - 视图
 
@@ -79,15 +89,48 @@ final class PiPSubtitleController: NSObject, ObservableObject {
 
     // MARK: - 字幕更新
 
-    func update(original: String, translation: String) {
-        currentOriginal = original
-        currentTranslation = translation
-        if pipController == nil {
-            // 预览视图还没建好时只记住文本，等 prepare 后再统一渲染
-            return
+    /// 新来一行：从底部滚进来
+    func push(original: String, translation: String = "") {
+        let trimmed = original.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        rows.append(PiPRow(id: UUID(), original: trimmed, translation: translation))
+        if rows.count > maxRows {
+            rows.removeFirst(rows.count - maxRows)
         }
+        guard pipController != nil else { return }
         renderFrame()
         startHeartbeat()
+        animateIn()
+    }
+
+    /// 译文回来了：补到对应那一行上
+    func fill(original: String, translation: String) {
+        guard !translation.isEmpty else { return }
+        if let index = rows.lastIndex(where: { $0.original == original }) {
+            rows[index].translation = translation
+        } else if !rows.isEmpty {
+            rows[rows.count - 1].translation = translation
+        }
+        guard pipController != nil else { return }
+        renderFrame()
+    }
+
+    func reset() {
+        rows.removeAll()
+        renderedKey = ""
+        guard pipController != nil else { return }
+        renderFrame()
+    }
+
+    /// 逐帧上移，做出"滚动"的观感（约 0.2 秒）
+    private func animateIn() {
+        let steps: [CGFloat] = [0.9, 0.6, 0.32, 0.12, 0]
+        for (index, step) in steps.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.045) { [weak self] in
+                self?.renderFrame(shift: step)
+            }
+        }
     }
 
     private func startHeartbeat() {
@@ -98,10 +141,12 @@ final class PiPSubtitleController: NSObject, ObservableObject {
         }
     }
 
-    private func renderFrame() {
-        let key = currentOriginal + "\u{1F}" + currentTranslation
+    private func renderFrame(shift: CGFloat = 0) {
+        let signature = rows.map { $0.original + "\u{1F}" + $0.translation }.joined(separator: "\u{1E}")
+        let key = "\(shift)|\(signature)"
+
         if key != renderedKey || renderedImage == nil {
-            renderedImage = TextFrameRenderer.makeImage(original: currentOriginal, translation: currentTranslation)
+            renderedImage = TextFrameRenderer.makeImage(rows: rows, shift: shift)
             renderedKey = key
         }
         guard let image = renderedImage,
@@ -186,8 +231,11 @@ final class SubtitleHostView: UIView {
 enum TextFrameRenderer {
 
     static let canvas = CGSize(width: 1280, height: 720)
+    /// 单行字幕的高度（含原文小字）
+    static let rowHeight: CGFloat = 104
 
-    static func makeImage(original: String, translation: String) -> CGImage? {
+    /// 多行滚动渲染：rows 里最后一个是最新的一行，贴在最底部
+    static func makeImage(rows: [PiPRow], shift: CGFloat = 0) -> CGImage? {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         format.opaque = false
@@ -196,42 +244,75 @@ enum TextFrameRenderer {
         let image = renderer.image { context in
             let cg = context.cgContext
             cg.clear(CGRect(origin: .zero, size: canvas))
+            guard !rows.isEmpty else { return }
 
-            let bandHeight: CGFloat = 230
+            let padding: CGFloat = 26
+            let bandHeight = min(canvas.height, CGFloat(rows.count) * rowHeight + padding * 2)
             let band = CGRect(x: 0, y: canvas.height - bandHeight, width: canvas.width, height: bandHeight)
-            cg.setFillColor(UIColor.black.withAlphaComponent(0.78).cgColor)
-            cg.fill(band)
+
+            // 底部渐变遮罩，字幕浮在画面上时更干净
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                         colors: [UIColor.black.withAlphaComponent(0).cgColor,
+                                                  UIColor.black.withAlphaComponent(0.80).cgColor] as CFArray,
+                                         locations: [0, 1]) {
+                cg.saveGState()
+                cg.clip(to: band)
+                cg.drawLinearGradient(gradient,
+                                      start: CGPoint(x: 0, y: band.minY),
+                                      end: CGPoint(x: 0, y: band.maxY),
+                                      options: [])
+                cg.restoreGState()
+            }
 
             let paragraph = NSMutableParagraphStyle()
             paragraph.alignment = .center
             paragraph.lineBreakMode = .byTruncatingTail
 
-            let primary = translation.isEmpty ? original : translation
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 44, weight: .semibold),
-                .foregroundColor: UIColor.white,
-                .paragraphStyle: paragraph
-            ]
-            (primary as NSString).draw(in: band.insetBy(dx: 48, dy: 34), withAttributes: attributes)
+            let offset = shift * rowHeight
 
-            if !translation.isEmpty && !original.isEmpty {
-                let secondary = original as NSString
-                let secondaryAttributes: [NSAttributedString.Key: Any] = [
-                    .font: UIFont.systemFont(ofSize: 26, weight: .regular),
-                    .foregroundColor: UIColor.white.withAlphaComponent(0.65),
-                    .paragraphStyle: paragraph
-                ]
-                let secondaryRect = CGRect(x: 48, y: canvas.height - bandHeight + 12,
-                                           width: canvas.width - 96, height: 32)
-                secondary.draw(in: secondaryRect, withAttributes: secondaryAttributes)
+            for (index, row) in rows.enumerated() {
+                let fromBottom = rows.count - index          // 1 = 最新
+                let rowBottom = canvas.height - padding - CGFloat(fromBottom - 1) * rowHeight + offset
+                let rowTop = rowBottom - rowHeight
+
+                // 最新一行滑入时淡入
+                let isNewest = index == rows.count - 1
+                let alpha: CGFloat = isNewest ? max(0.35, 1 - shift * 0.7) : 1
+
+                if row.translation.isEmpty {
+                    let attributes: [NSAttributedString.Key: Any] = [
+                        .font: UIFont.systemFont(ofSize: 42, weight: .semibold),
+                        .foregroundColor: UIColor.white.withAlphaComponent(alpha),
+                        .paragraphStyle: paragraph
+                    ]
+                    (row.original as NSString).draw(
+                        in: CGRect(x: 48, y: rowTop + (rowHeight - 58) / 2, width: canvas.width - 96, height: 58),
+                        withAttributes: attributes
+                    )
+                } else {
+                    let translationAttributes: [NSAttributedString.Key: Any] = [
+                        .font: UIFont.systemFont(ofSize: 40, weight: .semibold),
+                        .foregroundColor: UIColor.white.withAlphaComponent(alpha),
+                        .paragraphStyle: paragraph
+                    ]
+                    (row.translation as NSString).draw(
+                        in: CGRect(x: 48, y: rowTop + 8, width: canvas.width - 96, height: 54),
+                        withAttributes: translationAttributes
+                    )
+
+                    let originalAttributes: [NSAttributedString.Key: Any] = [
+                        .font: UIFont.systemFont(ofSize: 22, weight: .regular),
+                        .foregroundColor: UIColor.white.withAlphaComponent(alpha * 0.62),
+                        .paragraphStyle: paragraph
+                    ]
+                    (row.original as NSString).draw(
+                        in: CGRect(x: 48, y: rowTop + 64, width: canvas.width - 96, height: 32),
+                        withAttributes: originalAttributes
+                    )
+                }
             }
         }
         return image.cgImage
-    }
-
-    static func makePixelBuffer(original: String, translation: String) -> CVPixelBuffer? {
-        guard let image = makeImage(original: original, translation: translation) else { return nil }
-        return makePixelBuffer(from: image)
     }
 
     static func makePixelBuffer(from cgImage: CGImage) -> CVPixelBuffer? {

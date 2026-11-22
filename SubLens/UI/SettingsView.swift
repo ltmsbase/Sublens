@@ -45,19 +45,23 @@ struct SettingsView: View {
     private var languagesCard: some View {
         SectionCard(title: "语种") {
             VStack(spacing: 12) {
-                pickerRow(title: "原文语言", selection: $env.sourceLanguage)
+                pickerRow(title: "原文语言", selection: $env.sourceLanguage, options: LanguageOption.sourceOptions)
                 Divider().overlay(Color.white.opacity(0.08))
-                pickerRow(title: "译文语言", selection: $env.targetLanguage)
+                pickerRow(title: "译文语言", selection: $env.targetLanguage, options: LanguageOption.all)
 
                 Button {
+                    guard !LanguageOption.isAuto(env.sourceLanguage) else { return }
                     let source = env.sourceLanguage
                     env.sourceLanguage = env.targetLanguage
                     env.targetLanguage = source
                 } label: {
-                    Label("交换", systemImage: "arrow.left.arrow.right")
+                    Label(LanguageOption.isAuto(env.sourceLanguage) ? "自动识别时不支持交换" : "交换",
+                          systemImage: "arrow.left.arrow.right")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(GlassButtonStyle())
+                .disabled(LanguageOption.isAuto(env.sourceLanguage))
+                .opacity(LanguageOption.isAuto(env.sourceLanguage) ? 0.5 : 1)
 
                 Text("屏幕字幕、识图、同传都用这一组语种。")
                     .font(.caption2)
@@ -67,14 +71,14 @@ struct SettingsView: View {
         }
     }
 
-    private func pickerRow(title: String, selection: Binding<String>) -> some View {
+    private func pickerRow(title: String, selection: Binding<String>, options: [LanguageOption]) -> some View {
         HStack {
             Text(title)
                 .font(.callout)
                 .foregroundStyle(.white)
             Spacer()
             Picker(selection: selection) {
-                ForEach(LanguageOption.all) { option in
+                ForEach(options) { option in
                     Text(option.title).tag(option.id)
                 }
             } label: {

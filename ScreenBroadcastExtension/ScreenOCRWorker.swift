@@ -19,6 +19,7 @@ final class ScreenOCRWorker {
     private var lastJoined = ""
 
     private var _region: ScreenRegion = .full
+    private var autoDetect = false
     private var regionSnapshot: ScreenRegion {
         lock.lock()
         defer { lock.unlock() }
@@ -31,14 +32,17 @@ final class ScreenOCRWorker {
         lock.unlock()
     }
 
-    /// 主 App 下发了新的识别区域
-    func apply(region: ScreenRegion) {
+    /// 主 App 下发了新的识别区域和语种开关
+    func apply(region: ScreenRegion, autoDetect: Bool) {
         let clamped = region.clamped()
         queue.async { [weak self] in
             guard let self else { return }
-            guard clamped != self.regionSnapshot else { return }
+            let regionChanged = clamped != self.regionSnapshot
+            let autoChanged = autoDetect != self.autoDetect
+            guard regionChanged || autoChanged else { return }
             self.setRegion(clamped)
-            self.lastJoined = ""       // 区域变了，允许下一次识别结果立刻上屏
+            self.autoDetect = autoDetect
+            self.lastJoined = ""       // 区域或语种变了，允许下一次识别结果立刻上屏
         }
     }
 
@@ -58,13 +62,16 @@ final class ScreenOCRWorker {
         guard CVPixelBufferGetWidth(pixelBuffer) > 0 else { return }
 
         // 有 App Group 时配置走共享文件（文件极小，每次读一下最省心）
-        if let fileRegion = SharedScreenConfig.read(), fileRegion != regionSnapshot {
-            setRegion(fileRegion)
-            lastJoined = ""
+        if let payload = SharedScreenConfig.read() {
+            if payload.region != regionSnapshot || payload.autoDetect != autoDetect {
+                setRegion(payload.region)
+                autoDetect = payload.autoDetect
+                lastJoined = ""
+            }
         }
 
         let region = regionSnapshot
-        let lines = performOCR(on: pixelBuffer, region: region)
+        let lines = performOCR(on: pixelBuffer, region: region, autoDetect: autoDetect)
 
         guard !lines.isEmpty else {
             // 画面上没字了，把上一次的结果清掉，避免主 App 一直显示过期字幕
@@ -87,7 +94,10 @@ final class ScreenOCRWorker {
         SharedScreenBus.write(payload)
     }
 
-    private func performOCR(on pixelBuffer: CVPixelBuffer, region: ScreenRegion) -> [String] {
+    private func performOCR(on pixelBuffer: CVPixelBuffer, region: ScreenRegion, autoDetect: Bool) -> [String] {
+        if autoDetect, let results = run(on: pixelBuffer, region: region, languages: nil), !results.isEmpty {
+            return results
+        }
         let preferred = ["zh-Hans", "zh-Hant", "en-US", "ja-JP", "ko-KR"]
         if let results = run(on: pixelBuffer, region: region, languages: preferred), !results.isEmpty {
             return results
@@ -107,6 +117,9 @@ final class ScreenOCRWorker {
         request.regionOfInterest = region.visionRect
         if let languages {
             request.recognitionLanguages = languages
+        } else {
+            // 自动判断文字语种
+            request.automaticallyDetectsLanguage = true
         }
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])

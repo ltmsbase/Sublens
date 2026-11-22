@@ -33,7 +33,10 @@ struct LanguageOption: Identifiable, Hashable {
     let title: String
 
     /// 苹果端上翻译使用的标识
-    var locale: Locale { Locale(identifier: id) }
+    var locale: Locale {
+        if id == "auto" { return Locale(identifier: LanguageDetector.recognizerLocale(for: LanguageDetector.systemPreferredCode)) }
+        return Locale(identifier: id)
+    }
 
     /// 语音合成使用的 BCP-47 标识
     var speechLocale: String {
@@ -47,6 +50,7 @@ struct LanguageOption: Identifiable, Hashable {
     /// 语音识别使用的标识
     var recognizerLocale: String {
         switch id {
+        case "auto": return LanguageDetector.recognizerLocale(for: LanguageDetector.systemPreferredCode)
         case "zh-Hans": return "zh-CN"
         case "zh-Hant": return "zh-TW"
         default: return id
@@ -61,6 +65,9 @@ struct LanguageOption: Identifiable, Hashable {
         default: return id
         }
     }
+
+    /// 「自动识别」只用于原文语言
+    static let auto = LanguageOption(id: "auto", title: "自动识别")
 
     static let all: [LanguageOption] = [
         .init(id: "en", title: "英语"),
@@ -83,9 +90,15 @@ struct LanguageOption: Identifiable, Hashable {
         .init(id: "hi", title: "印地语")
     ]
 
+    /// 原文语言候选：自动识别排在最前
+    static var sourceOptions: [LanguageOption] { [auto] + all }
+
     static func title(for id: String) -> String {
-        all.first(where: { $0.id == id })?.title ?? id
+        if id == "auto" { return auto.title }
+        return all.first(where: { $0.id == id })?.title ?? id
     }
+
+    static func isAuto(_ id: String) -> Bool { id == "auto" }
 
     static func option(for id: String) -> LanguageOption {
         all.first(where: { $0.id == id }) ?? LanguageOption(id: id, title: id)

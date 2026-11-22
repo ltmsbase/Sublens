@@ -9,6 +9,8 @@ final class ScreenSubtitleService: ObservableObject {
     @Published var statusText = ""
     @Published var region: ScreenRegion = .full
     @Published private(set) var regionApplied = false
+    /// 原文语言设成「自动」时，让扩展也自动判断文字语种
+    private(set) var autoDetect = false
     @Published var snapshotCount = 0
     @Published var transportText = ""
 
@@ -37,12 +39,18 @@ final class ScreenSubtitleService: ObservableObject {
         if let data = try? JSONEncoder().encode(clamped) {
             UserDefaults.standard.set(data, forKey: Self.regionKey)
         }
-        SharedScreenConfig.write(clamped)
-        server?.sendConfig(clamped)
+        SharedScreenConfig.write(clamped, autoDetect: autoDetect)
+        server?.sendConfig(clamped, autoDetect: autoDetect)
         regionApplied = true
         // 换区域等于重来一遍，清掉历史快照，避免拿旧结果比对
         previous = []
         latest = []
+    }
+
+    func applyAutoDetect(_ flag: Bool) {
+        autoDetect = flag
+        SharedScreenConfig.write(region, autoDetect: flag)
+        server?.sendConfig(region, autoDetect: flag)
     }
 
     func start() {
@@ -66,8 +74,8 @@ final class ScreenSubtitleService: ObservableObject {
             server.start()
             self.server = server
             // 一启动就把当前选区推过去，扩展连上后立刻按选区识别
-            server.sendConfig(region)
-            SharedScreenConfig.write(region)
+            server.sendConfig(region, autoDetect: autoDetect)
+            SharedScreenConfig.write(region, autoDetect: autoDetect)
         }
 
         timer?.invalidate()

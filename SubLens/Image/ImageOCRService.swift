@@ -18,7 +18,7 @@ enum OCRError: LocalizedError {
 /// 图片文字识别。使用 Vision 的 VNRecognizeTextRequest，中文识别效果明显好于旧版 CIDetector。
 struct ImageOCRService {
 
-    func recognize(in image: UIImage, languages: [String]) async throws -> [RecognizedBlock] {
+    func recognize(in image: UIImage, languages: [String], autoDetect: Bool = false) async throws -> [RecognizedBlock] {
         guard let cgImage = image.cgImage else { throw OCRError.noImage }
         let orientation = CGImagePropertyOrientation(uiOrientation: image.imageOrientation)
 
@@ -27,7 +27,12 @@ struct ImageOCRService {
                 let request = VNRecognizeTextRequest()
                 request.recognitionLevel = .accurate
                 request.usesLanguageCorrection = true
-                request.recognitionLanguages = languages
+                if autoDetect {
+                    // 交给 Vision 自己判断文字是哪种语言
+                    request.automaticallyDetectsLanguage = true
+                } else {
+                    request.recognitionLanguages = languages
+                }
 
                 let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
                 do {

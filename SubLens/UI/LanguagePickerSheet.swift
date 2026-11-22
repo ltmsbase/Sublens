@@ -7,12 +7,16 @@ struct LanguagePickerSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("原文语言") {
-                    ForEach(LanguageOption.all) { option in
+                Section {
+                    ForEach(LanguageOption.sourceOptions) { option in
                         row(option: option, selected: env.sourceLanguage) {
                             env.sourceLanguage = option.id
                         }
                     }
+                } header: {
+                    Text("原文语言")
+                } footer: {
+                    Text("选「自动识别」时，语音按听到的内容判断语种，屏幕和识图交给系统判断，适合语种不固定的场景。")
                 }
                 Section("译文语言") {
                     ForEach(LanguageOption.all) { option in
@@ -23,10 +27,12 @@ struct LanguagePickerSheet: View {
                 }
                 Section {
                     Button("交换原文与译文") {
+                        guard !LanguageOption.isAuto(env.sourceLanguage) else { return }
                         let source = env.sourceLanguage
                         env.sourceLanguage = env.targetLanguage
                         env.targetLanguage = source
                     }
+                    .disabled(LanguageOption.isAuto(env.sourceLanguage))
                 } footer: {
                     Text("端上翻译需要系统先下载语言包，首次使用某个语种会稍慢，之后可离线用。")
                 }

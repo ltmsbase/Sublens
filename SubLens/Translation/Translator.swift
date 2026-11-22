@@ -51,9 +51,11 @@ final class Translator: ObservableObject {
     func translate(_ text: String, from source: String, to target: String) async -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        guard source != target else { return trimmed }
+        // 「自动」时先用猜到的语种，猜不到就让端上翻译自己判断
+        let from = source == "auto" ? LanguageDetector.systemPreferredCode : source
+        guard from != target else { return trimmed }
 
-        let cacheKey = "\(source)>\(target)|\(trimmed)"
+        let cacheKey = "\(from)>\(target)|\(trimmed)"
         if let hit = cache[cacheKey] {
             return hit
         }
@@ -61,7 +63,7 @@ final class Translator: ObservableObject {
         isBusy = true
         defer { isBusy = false }
 
-        if let session, !onDeviceFailed, source != target {
+        if let session, !onDeviceFailed, from != target {
             do {
                 let response = try await session.translate(trimmed)
                 engineDescription = "端上翻译"
@@ -76,7 +78,7 @@ final class Translator: ObservableObject {
         }
 
         guard cloudFallbackEnabled else { return nil }
-        let cloud = await cloudTranslate(trimmed, from: source, to: target)
+        let cloud = await cloudTranslate(trimmed, from: from, to: target)
         if let cloud {
             engineDescription = "云端兜底"
             store(cacheKey, cloud)

@@ -8,13 +8,14 @@ struct BridgeEnvelope: Codable {
     var type: String
     var lines: [RemoteScreenLine]?
     var region: ScreenRegion?
+    var auto: Bool?
 
     static func makeLines(_ lines: [RemoteScreenLine]) -> BridgeEnvelope {
-        BridgeEnvelope(type: "lines", lines: lines, region: nil)
+        BridgeEnvelope(type: "lines", lines: lines, region: nil, auto: nil)
     }
 
-    static func makeConfig(_ region: ScreenRegion) -> BridgeEnvelope {
-        BridgeEnvelope(type: "config", lines: nil, region: region)
+    static func makeConfig(_ region: ScreenRegion, autoDetect: Bool) -> BridgeEnvelope {
+        BridgeEnvelope(type: "config", lines: nil, region: region, auto: autoDetect)
     }
 }
 
@@ -47,7 +48,7 @@ final class BridgeServer {
     private(set) var isRunning = false
 
     private var connections: [NWConnection] = []
-    private var lastConfig: ScreenRegion?
+    private var lastConfig: (region: ScreenRegion, autoDetect: Bool)?
 
     var onLines: (([RemoteScreenLine]) -> Void)?
 
@@ -86,11 +87,11 @@ final class BridgeServer {
     }
 
     /// 把识别区域推给扩展；同时记住它，扩展重连或后启动时自动补发
-    func sendConfig(_ region: ScreenRegion) {
-        guard let data = BridgeCodec.encode(.makeConfig(region)) else { return }
+    func sendConfig(_ region: ScreenRegion, autoDetect: Bool) {
+        guard let data = BridgeCodec.encode(.makeConfig(region, autoDetect: autoDetect)) else { return }
         queue.async { [weak self] in
             guard let self else { return }
-            self.lastConfig = region
+            self.lastConfig = (region, autoDetect)
             for connection in self.connections {
                 connection.send(content: data, completion: .contentProcessed { _ in })
             }
@@ -102,7 +103,8 @@ final class BridgeServer {
         connections.append(connection)
 
         // 新连上的扩展立即拿到当前的识别区域，避免"用户已经选好了却还在整屏识别"
-        if let region = lastConfig, let data = BridgeCodec.encode(.makeConfig(region)) {
+        if let config = lastConfig,
+           let data = BridgeCodec.encode(.makeConfig(config.region, autoDetect: config.autoDetect)) {
             connection.send(content: data, completion: .contentProcessed { _ in })
         }
         receive(on: connection, buffer: Data())
@@ -152,7 +154,7 @@ final class BridgeClient {
     private var pending: [Data] = []
 
     /// 收到主 App 下发的识别区域
-    var onConfig: ((ScreenRegion) -> Void)?
+    var onConfig: ((ScreenRegion, Bool) -> Void)?
 
     func send(_ envelope: BridgeEnvelope) {
         guard let data = BridgeCodec.encode(envelope) else { return }
@@ -217,7 +219,7 @@ final class BridgeClient {
                 if let envelope = BridgeCodec.decode(chunk),
                    envelope.type == "config",
                    let region = envelope.region {
-                    self.onConfig?(region)
+                    self.onConfig?(region, envelope.auto ?? false)
                 }
             }
 

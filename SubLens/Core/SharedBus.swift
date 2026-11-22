@@ -70,24 +70,31 @@ struct ScreenRegion: Codable, Equatable {
     }
 }
 
-/// 识别区域在共享容器里的落盘（有 App Group 时扩展读文件拿配置）
+/// 屏幕识别配置：区域 + 是否自动判断语种
+struct ScreenConfigPayload: Codable, Equatable {
+    var region: ScreenRegion
+    var autoDetect: Bool
+}
+
+/// 识别配置在共享容器里的落盘（有 App Group 时扩展读文件拿配置）
 enum SharedScreenConfig {
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
 
-    static func write(_ region: ScreenRegion) {
+    static func write(_ region: ScreenRegion, autoDetect: Bool) {
         guard let url = SharedConfig.regionFileURL else { return }
-        guard let data = try? encoder.encode(region) else { return }
+        let payload = ScreenConfigPayload(region: region, autoDetect: autoDetect)
+        guard let data = try? encoder.encode(payload) else { return }
         try? data.write(to: url, options: .atomic)
     }
 
-    static func read() -> ScreenRegion? {
+    static func read() -> ScreenConfigPayload? {
         guard let url = SharedConfig.regionFileURL,
               let data = try? Data(contentsOf: url),
-              let region = try? decoder.decode(ScreenRegion.self, from: data) else {
+              let payload = try? decoder.decode(ScreenConfigPayload.self, from: data) else {
             return nil
         }
-        return region.clamped()
+        return ScreenConfigPayload(region: payload.region.clamped(), autoDetect: payload.autoDetect)
     }
 }
 

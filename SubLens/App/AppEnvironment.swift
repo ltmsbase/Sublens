@@ -14,8 +14,24 @@ final class AppEnvironment: ObservableObject {
     @Published var sourceLanguage: String = "en" {
         didSet {
             UserDefaults.standard.set(sourceLanguage, forKey: "srcLang")
+            detectedSourceLanguage = nil
             rebuildTranslationConfiguration()
+            // 屏幕字幕的识别语种也跟着变（扩展侧只认「自动」这个开关）
+            if isScreenRunning {
+                screenService.applyAutoDetect(LanguageOption.isAuto(sourceLanguage))
+            }
         }
+    }
+
+    /// 自动模式下猜到的源语言
+    @Published var detectedSourceLanguage: String?
+
+    /// 实际用于翻译的源语言
+    var effectiveSource: String {
+        if sourceLanguage == "auto" {
+            return detectedSourceLanguage ?? LanguageDetector.systemPreferredCode
+        }
+        return sourceLanguage
     }
     @Published var targetLanguage: String = "zh-Hans" {
         didSet {
@@ -97,8 +113,12 @@ final class AppEnvironment: ObservableObject {
             translationConfiguration = nil
             return
         }
+        // source 传 nil 表示「自动识别原文语言」
+        let source = LanguageOption.isAuto(sourceLanguage)
+            ? nil
+            : Locale.Language(identifier: sourceLanguage)
         translationConfiguration = TranslationSession.Configuration(
-            source: Locale.Language(identifier: sourceLanguage),
+            source: source,
             target: Locale.Language(identifier: targetLanguage)
         )
     }
@@ -124,6 +144,12 @@ final class AppEnvironment: ObservableObject {
         speech.onFinal = { [weak self] text, isSentenceEnd in
             self?.enqueue(text, kind: .microphone, speak: isSentenceEnd)
         }
+        speech.onDetectedLanguage = { [weak self] code in
+            guard let self else { return }
+            if self.sourceLanguage == "auto" {
+                self.detectedSourceLanguage = code
+            }
+        }
     }
 
     private func wireScreen() {
@@ -148,7 +174,11 @@ final class AppEnvironment: ObservableObject {
         liveLines.removeAll()
         partialText = ""
         isLiveRunning = true
-        speech.start(localeID: LanguageOption.option(for: sourceLanguage).recognizerLocale)
+        let auto = LanguageOption.isAuto(sourceLanguage)
+        let locale = auto
+            ? LanguageDetector.recognizerLocale(for: LanguageDetector.systemPreferredCode)
+            : LanguageOption.option(for: sourceLanguage).recognizerLocale
+        speech.start(localeID: locale, autoDetect: auto)
     }
 
     func stopLive() {
@@ -172,6 +202,8 @@ final class AppEnvironment: ObservableObject {
         isScreenRunning = true
         screenLines.removeAll()
         keeper.start()
+        pip.reset()
+        screenService.applyAutoDetect(LanguageOption.isAuto(sourceLanguage))
         screenService.start()
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
@@ -185,6 +217,7 @@ final class AppEnvironment: ObservableObject {
 
     func stopScreen() {
         screenService.stop()
+        pip.reset()
         pip.stop()
         keeper.stop()
         isScreenRunning = false
@@ -217,15 +250,16 @@ final class AppEnvironment: ObservableObject {
         default: languages = [source.recognizerLocale, "en-US"]
         }
 
+        let autoDetect = LanguageOption.isAuto(sourceLanguage)
         do {
-            var blocks = try await ocr.recognize(in: image, languages: languages)
+            var blocks = try await ocr.recognize(in: image, languages: languages, autoDetect: autoDetect)
             guard !blocks.isEmpty else {
                 statusMessage = "没有识别到文字，换个角度或更清晰的图片试试"
                 return []
             }
             for index in blocks.indices {
                 let translated = await translator.translate(blocks[index].text,
-                                                            from: sourceLanguage,
+                                                            from: effectiveSource,
                                                             to: targetLanguage) ?? ""
                 blocks[index].translation = translated
             }
@@ -246,7 +280,7 @@ final class AppEnvironment: ObservableObject {
         let placeholder = SubtitleLine(original: trimmed, translation: "", kind: kind)
         appendLine(placeholder)
         if kind == .screen {
-            pip.update(original: trimmed, translation: "")
+            pip.push(original: trimmed)
         }
 
         pending.append((trimmed, kind, placeholder.id, speak))
@@ -282,7 +316,7 @@ final class AppEnvironment: ObservableObject {
         while !pending.isEmpty {
             let item = pending.removeFirst()
             let translation = await translator.translate(item.text,
-                                                          from: sourceLanguage,
+                                                          from: effectiveSource,
                                                           to: targetLanguage) ?? ""
             guard !translation.isEmpty || translator.lastError == nil else { continue }
 
@@ -300,7 +334,7 @@ final class AppEnvironment: ObservableObject {
             }
 
             if item.kind == .screen {
-                pip.update(original: item.text, translation: translation)
+                pip.fill(original: item.text, translation: translation)
                 isPiPActive = pip.isActive
             }
         }
